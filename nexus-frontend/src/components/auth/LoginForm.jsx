@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { User, Lock, ArrowRight } from 'lucide-react';
+// Ikon User dihapus, diganti dengan Phone
+import { Phone, Lock, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
-  const [formData, setFormData] = useState({ username: '', password: '' });
+  // State username diganti menjadi no_hp
+  const [formData, setFormData] = useState({ no_hp: '', password: '' });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -24,22 +26,23 @@ export default function LoginForm() {
       if (res.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Ambil role dari data user backend
+
         const role = data.user.role.toLowerCase();
 
-        // Logika pengalihan yang spesifik
         if (role === 'relawan') {
-          router.push('/relawan/dashboard'); // Sesuai permintaanmu
+          router.push('/relawan/dashboard');
         } else if (role === 'operator') {
           router.push('/operator/dashboard');
         } else if (role === 'trc') {
           router.push('/trc/dashboard');
         } else {
-          router.push('/auth'); // Fallback jika role tidak dikenal
+          router.push('/auth');
         }
         
         alert('Login Berhasil!');
+      } else {
+        // Tambahan agar pesan error dari backend muncul saat gagal login
+        alert(data.message || 'Login Gagal, periksa kembali Nomor HP atau Password.');
       }
     } catch (err) {
       alert('Gagal terhubung ke server backend');
@@ -55,15 +58,18 @@ export default function LoginForm() {
       
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+          {/* Label diubah menjadi Nomor HP */}
+          <label className="block text-sm font-medium text-slate-700 mb-1">Nomor HP</label>
           <div className="relative">
-            <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            {/* Ikon diganti menjadi Phone */}
+            <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
-              type="text" 
+              type="tel" 
               required
               className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-black" 
-              placeholder="Username"
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
+              placeholder="08xxxxxxxxxx"
+              // onChange diperbarui ke no_hp
+              onChange={(e) => setFormData({...formData, no_hp: e.target.value})}
             />
           </div>
         </div>

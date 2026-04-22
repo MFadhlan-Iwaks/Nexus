@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { User, Phone, MapPin, Lock } from 'lucide-react';
+// Ikon 'User' dihapus karena sudah tidak pakai username
+import { Phone, MapPin, Lock } from 'lucide-react';
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
     nama_lengkap: '',
-    username: '',
+    // username sudah dihapus dari state
     no_hp: '',
     alamat: '',
     password: ''
@@ -43,36 +44,25 @@ export default function RegisterForm() {
           <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
           <input 
             type="text" 
+            required
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none text-sm text-black" 
             placeholder="Sesuai KTP" 
             onChange={(e) => setFormData({...formData, nama_lengkap: e.target.value})}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-            <div className="relative">
-              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text" 
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none text-sm text-black" 
-                placeholder="johndoe" 
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">No. HP</label>
-            <div className="relative">
-              <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="tel" 
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none text-sm text-black" 
-                placeholder="0812..." 
-                onChange={(e) => setFormData({...formData, no_hp: e.target.value})}
-              />
-            </div>
+        {/* Grid 2 kolom dihapus, No HP sekarang full width */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">No. HP (Sebagai ID Login)</label>
+          <div className="relative">
+            <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="tel" 
+              required
+              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none text-sm text-black" 
+              placeholder="08123456789" 
+              onChange={(e) => setFormData({...formData, no_hp: e.target.value})}
+            />
           </div>
         </div>
 
@@ -81,6 +71,7 @@ export default function RegisterForm() {
           <div className="relative">
             <MapPin size={16} className="absolute left-3 top-3 text-slate-400" />
             <textarea 
+              required
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none text-sm text-black" 
               rows="2" 
               placeholder="Detail alamat saat ini"
@@ -95,6 +86,7 @@ export default function RegisterForm() {
             <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="password" 
+              required
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none text-sm text-black" 
               placeholder="Minimal 8 karakter" 
               onChange={(e) => setFormData({...formData, password: e.target.value})}
