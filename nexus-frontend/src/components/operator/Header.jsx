@@ -1,6 +1,35 @@
-import { Bell, User, Menu } from 'lucide-react'; 
+import { Menu } from 'lucide-react';
+import UserProfileDropdown from '@/components/common/UserProfileDropdown';
+import NotificationBell from '@/components/common/NotificationBell';
 
 export default function Header({ activeTab, onOpenMenu }) {
+  const operatorDefaultProfile = {
+    name: 'Angga N.',
+    role: 'Operator',
+    id: 'OPR-001',
+    phone: '0833-4455-6677',
+    email: 'operator@nexus.id',
+    instansi: 'Dinas Kesehatan Kota',
+    address: 'Posko Instansi Kota'
+  };
+
+  const operatorNotifications = [
+    {
+      id: 'opr-1',
+      title: 'Permintaan Logistik',
+      message: 'TRC meminta tambahan paket medis darurat.',
+      time: '4 menit lalu',
+      read: false
+    },
+    {
+      id: 'opr-2',
+      title: 'Update Kapasitas Faskes',
+      message: 'Puskesmas Cihideung memperbarui ketersediaan bed.',
+      time: '15 menit lalu',
+      read: true
+    }
+  ];
+
   const getHeaderTitle = () => {
     switch (activeTab) {
       case 'beranda': return 'Beranda Instansi';
@@ -28,22 +57,15 @@ export default function Header({ activeTab, onOpenMenu }) {
       </div>
       
       <div className="flex items-center gap-3 sm:gap-5">
-        <button className="relative text-slate-500 hover:text-slate-700 transition-colors p-1 hidden sm:block">
-          <Bell size={20} />
-          <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-        </button>
+        <NotificationBell items={operatorNotifications} className="hidden sm:block" />
 
         <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-slate-800">Angga N.</p>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Operator</p>
-          </div>
-          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-50 border-2 border-white shadow-sm flex items-center justify-center text-blue-600 overflow-hidden shrink-0">
-            <User size={18} />
-          </div>
-        </div>
+        <UserProfileDropdown
+          defaultProfile={operatorDefaultProfile}
+          roleClassName="text-slate-500"
+          avatarClassName="bg-blue-50 text-blue-600"
+        />
       </div>
     </header>
   );

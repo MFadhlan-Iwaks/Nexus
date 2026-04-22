@@ -1,10 +1,38 @@
 "use client";
 
-import { ShieldAlert, User, Bell, LogOut } from 'lucide-react';
+import { ShieldAlert, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import UserProfileDropdown from '@/components/common/UserProfileDropdown';
+import NotificationBell from '@/components/common/NotificationBell';
 
 export default function NavbarMasyrakat({ userName = "M. Fadhlan" }) {
   const router = useRouter();
+
+  const masyarakatDefaultProfile = {
+    name: userName,
+    role: 'Masyrakat',
+    id: 'MSY-001',
+    phone: '0812-3344-5566',
+    email: 'masyarakat@nexus.id',
+    address: 'Kec. Tawang, Kota Tasikmalaya'
+  };
+
+  const masyarakatNotifications = [
+    {
+      id: 'msy-1',
+      title: 'Peringatan Dini',
+      message: 'Waspada banjir susulan di DAS Ciliwung.',
+      time: '10 menit lalu',
+      read: false
+    },
+    {
+      id: 'msy-2',
+      title: 'Status Laporan',
+      message: 'Laporan Anda sedang diproses oleh tim TRC.',
+      time: '25 menit lalu',
+      read: false
+    }
+  ];
 
   const handleLogout = () => {
     alert("Anda telah berhasil logout dari sistem NEXUS.");
@@ -23,22 +51,15 @@ export default function NavbarMasyrakat({ userName = "M. Fadhlan" }) {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
-          <button className="relative text-slate-500 hover:text-slate-700 transition-colors">
-            <Bell size={20} />
-            <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
+          <NotificationBell items={masyarakatNotifications} />
 
           <div className="h-8 w-px bg-slate-200"></div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-slate-900">{userName}</p>
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Masyrakat</p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 border-2 border-white shadow-sm overflow-hidden">
-              <User size={20} />
-            </div>
-          </div>
+          <UserProfileDropdown
+            defaultProfile={masyarakatDefaultProfile}
+            roleClassName="text-slate-500"
+            avatarClassName="bg-slate-100 text-slate-600"
+          />
 
           <button 
             onClick={handleLogout}

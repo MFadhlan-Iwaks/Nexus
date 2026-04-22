@@ -3,11 +3,13 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ShieldAlert, Users, Ambulance, Megaphone, Activity, LogOut, Bell, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, Users, Ambulance, Megaphone, Activity, LogOut, LayoutDashboard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import BroadcastModal from '@/components/admin/BroadcastModal';
 import ManajemenMasyrakat from '@/components/Admin/ManajemenPengguna'; // IMPORT BARU
 import StatusInstansi from '@/components/admin/StatusInstansi'; // IMPORT BARU
+import UserProfileDropdown from '@/components/common/UserProfileDropdown';
+import NotificationBell from '@/components/common/NotificationBell';
 
 const MapWithNoSSR = dynamic(() => import('@/components/admin/InteractiveMap'), {
   ssr: false,
@@ -23,10 +25,44 @@ const MapWithNoSSR = dynamic(() => import('@/components/admin/InteractiveMap'), 
 
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('peta'); // 'peta', 'masyrakat', 'instansi'
+  const [activeTab, setActiveTab] = useState('peta'); 
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
 
-  // Helper untuk class menu sidebar aktif
+  const adminDefaultProfile = {
+    name: 'Kepala BPBD',
+    role: 'Administrator',
+    id: 'ADM-001',
+    phone: '0811-0000-0001',
+    email: 'admin.bpbd@nexus.id',
+    address: 'Kantor BPBD Kota',
+    instansi: 'BPBD Kota'
+  };
+
+  const adminNotifications = [
+    {
+      id: 'adm-1',
+      title: 'Laporan Baru Masuk',
+      message: '3 laporan bencana baru menunggu validasi TRC.',
+      time: '2 menit lalu',
+      read: false
+    },
+    {
+      id: 'adm-2',
+      title: 'Update Faskes',
+      message: 'RSUD Kota memperbarui kapasitas ruang darurat.',
+      time: '12 menit lalu',
+      read: false
+    },
+    {
+      id: 'adm-3',
+      title: 'Broadcast Terkirim',
+      message: 'Notifikasi peringatan dini berhasil dipancarkan.',
+      time: '30 menit lalu',
+      read: true
+    }
+  ];
+
+  
   const getMenuClass = (tabId) => {
     return `w-full flex items-center gap-3 p-3 lg:px-4 rounded-xl font-medium justify-center lg:justify-start transition-all ${
       activeTab === tabId 
@@ -38,7 +74,7 @@ export default function AdminExecutiveDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans text-slate-800">
       
-      {/* SIDEBAR ADMIN */}
+      
       <aside className="w-20 lg:w-64 bg-slate-900 flex flex-col h-screen transition-all duration-300">
         <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800">
           <ShieldAlert size={24} className="text-red-500" />
@@ -64,7 +100,6 @@ export default function AdminExecutiveDashboard() {
         </div>
       </aside>
 
-      {/* AREA UTAMA */}
       <main className="flex-1 flex flex-col h-screen relative">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
           <div>
@@ -72,25 +107,20 @@ export default function AdminExecutiveDashboard() {
             <h1 className="font-bold text-lg text-slate-800 sm:hidden">Pusat Komando</h1>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-            </button>
+            <NotificationBell items={adminNotifications} />
             <div className="h-8 w-px bg-slate-200"></div>
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-slate-900">Kepala BPBD</p>
-                <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Administrator</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-sm shadow-md">AD</div>
-            </div>
+            <UserProfileDropdown
+              defaultProfile={adminDefaultProfile}
+              roleClassName="text-green-600"
+              avatarClassName="bg-slate-800 text-white"
+            />
           </div>
         </header>
 
-        {/* KONTEN DINAMIS BERDASARKAN TAB */}
+        
         <div className="flex-1 p-4 lg:p-6 overflow-hidden bg-slate-50 flex flex-col lg:flex-row gap-6">
           
-          {/* JIKA TAB PETA AKTIF (Tampilkan Peta + Panel Kanan) */}
+          
           {activeTab === 'peta' && (
             <>
               <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative animate-in fade-in">
@@ -104,7 +134,7 @@ export default function AdminExecutiveDashboard() {
                 </div>
               </div>
 
-              {/* PANEL KANAN (Hanya muncul di Tab Peta) */}
+              
               <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0 overflow-y-auto pb-6 animate-in slide-in-from-right-8">
                 <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
                   <h3 className="font-bold text-red-900 mb-2 flex items-center gap-2"><Megaphone size={18} /> Peringatan Dini (EWS)</h3>
@@ -127,14 +157,14 @@ export default function AdminExecutiveDashboard() {
             </>
           )}
 
-          {/* JIKA TAB MASYRAKAT AKTIF */}
+          
           {activeTab === 'masyrakat' && (
             <div className="w-full h-full">
               <ManajemenMasyrakat />
             </div>
           )}
 
-          {/* JIKA TAB INSTANSI AKTIF */}
+          
           {activeTab === 'instansi' && (
             <div className="w-full h-full">
               <StatusInstansi />

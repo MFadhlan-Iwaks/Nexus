@@ -1,10 +1,39 @@
 "use client";
 
-import { ShieldAlert, Bell, LogOut, User } from 'lucide-react';
+import { ShieldAlert, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import UserProfileDropdown from '@/components/common/UserProfileDropdown';
+import NotificationBell from '@/components/common/NotificationBell';
 
 export default function TRCNavbar({ userName = "Budi S." }) {
   const router = useRouter();
+
+  const trcDefaultProfile = {
+    name: userName,
+    role: 'Petugas Lapangan',
+    id: 'TRC-001',
+    phone: '0811-2233-4455',
+    email: 'trc@nexus.id',
+    unit: 'Tim Alfa (Evakuasi)',
+    address: 'Posko Lapangan Utama'
+  };
+
+  const trcNotifications = [
+    {
+      id: 'trc-1',
+      title: 'Validasi Menunggu',
+      message: 'Ada 2 laporan baru yang perlu verifikasi lapangan.',
+      time: '5 menit lalu',
+      read: false
+    },
+    {
+      id: 'trc-2',
+      title: 'Arahan Komando',
+      message: 'Prioritaskan titik longsor di Kecamatan Kawalu.',
+      time: '18 menit lalu',
+      read: false
+    }
+  ];
 
   const handleLogout = () => {
     alert("Sesi TRC diakhiri. Mengalihkan ke halaman login...");
@@ -25,23 +54,15 @@ export default function TRCNavbar({ userName = "Budi S." }) {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
-          
-          <button className="relative text-slate-500 hover:text-slate-700 transition-colors p-1">
-             <Bell size={20} />
-             <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-          </button>
+          <NotificationBell items={trcNotifications} />
           
           <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-800">{userName}</p>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Petugas Lapangan</p>
-            </div>
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-slate-600 overflow-hidden shrink-0">
-              <User size={18} />
-            </div>
-          </div>
+          <UserProfileDropdown
+            defaultProfile={trcDefaultProfile}
+            roleClassName="text-slate-500"
+            avatarClassName="bg-slate-100 text-slate-600"
+          />
 
           <button 
             onClick={handleLogout} 
