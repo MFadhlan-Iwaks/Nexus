@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const authRoutes = require('./src/routes/authRoutes');
 const laporanRoutes = require('./src/routes/laporanRoutes');
+const peringatanRoutes = require('./src/routes/peringatanRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/laporan', laporanRoutes);
+app.use('/api/peringatan', peringatanRoutes);
 
 io.on('connection', (socket) => {
   console.log('User connected to NEXUS Socket');

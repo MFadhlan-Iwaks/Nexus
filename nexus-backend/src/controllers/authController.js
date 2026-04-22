@@ -16,7 +16,7 @@ exports.register = async (req, res) => {
 
         const newUser = await pool.query(
             `INSERT INTO users (nama_lengkap, no_hp, alamat, password, role) 
-             VALUES ($1, $2, $3, $4, 'Relawan') RETURNING id_user, nama_lengkap, role`,
+             VALUES ($1, $2, $3, $4, 'Masyarakat') RETURNING id_user, nama_lengkap, role`,
             [nama_lengkap, no_hp, alamat, hashedPassword]
         );
 

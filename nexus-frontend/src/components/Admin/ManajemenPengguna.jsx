@@ -44,7 +44,7 @@ export default function ManajemenPengguna() {
           onClick={() => setRoleTab('masyarakat')}
           className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${roleTab === 'masyarakat' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
-          <Users size={16}/> Masyrakat
+          <Users size={16}/> Masyarakat
         </button>
         <button 
           onClick={() => setRoleTab('trc')}

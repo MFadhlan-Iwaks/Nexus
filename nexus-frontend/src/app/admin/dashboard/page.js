@@ -3,10 +3,9 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ShieldAlert, Users, Ambulance, Megaphone, Activity, LogOut, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, Ambulance, Megaphone, Activity, LogOut, LayoutDashboard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import BroadcastModal from '@/components/admin/BroadcastModal';
-import ManajemenMasyrakat from '@/components/Admin/ManajemenPengguna'; // IMPORT BARU
 import StatusInstansi from '@/components/admin/StatusInstansi'; // IMPORT BARU
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
@@ -25,7 +24,7 @@ const MapWithNoSSR = dynamic(() => import('@/components/admin/InteractiveMap'), 
 
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('peta'); 
+  const [activeTab, setActiveTab] = useState('peta');
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
 
   const adminDefaultProfile = {
@@ -85,9 +84,6 @@ export default function AdminExecutiveDashboard() {
           <button onClick={() => setActiveTab('peta')} className={getMenuClass('peta')}>
             <LayoutDashboard size={20} /> <span className="hidden lg:block">Peta Komando</span>
           </button>
-          <button onClick={() => setActiveTab('masyrakat')} className={getMenuClass('masyrakat')}>
-            <Users size={20} /> <span className="hidden lg:block">Manajemen Pengguna</span>
-          </button>
           <button onClick={() => setActiveTab('instansi')} className={getMenuClass('instansi')}>
             <Ambulance size={20} /> <span className="hidden lg:block">Status Instansi</span>
           </button>
@@ -138,7 +134,7 @@ export default function AdminExecutiveDashboard() {
               <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0 overflow-y-auto pb-6 animate-in slide-in-from-right-8">
                 <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
                   <h3 className="font-bold text-red-900 mb-2 flex items-center gap-2"><Megaphone size={18} /> Peringatan Dini (EWS)</h3>
-                  <p className="text-xs text-red-700 mb-4 leading-relaxed">Kirim notifikasi langsung ke Dashboard Masyrakat.</p>
+                  <p className="text-xs text-red-700 mb-4 leading-relaxed">Kirim notifikasi langsung ke Dashboard Masyarakat.</p>
                   <button onClick={() => setIsBroadcastModalOpen(true)} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2">
                     <Megaphone size={16} /> Buat Broadcast Baru
                   </button>
@@ -155,13 +151,6 @@ export default function AdminExecutiveDashboard() {
                 </div>
               </div>
             </>
-          )}
-
-          
-          {activeTab === 'masyrakat' && (
-            <div className="w-full h-full">
-              <ManajemenMasyrakat />
-            </div>
           )}
 
           

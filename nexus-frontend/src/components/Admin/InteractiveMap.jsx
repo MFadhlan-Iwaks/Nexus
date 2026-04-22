@@ -10,7 +10,7 @@ export default function InteractiveMap() {
   // Titik tengah peta: Koordinat Kota Tasikmalaya
   const centerPosition = [-7.3274, 108.2232];
 
-  // Data Dummy Laporan dari Masyrakat (Sesuai dengan TRC sebelumnya)
+  // Data Dummy Laporan dari Masyarakat (Sesuai dengan TRC sebelumnya)
   const disasterPoints = [
     { 
       id: 1, 

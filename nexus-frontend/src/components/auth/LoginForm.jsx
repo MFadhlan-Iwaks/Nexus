@@ -29,8 +29,8 @@ export default function LoginForm() {
 
         const role = data.user.role.toLowerCase();
 
-        if (role === 'masyrakat') {
-          router.push('/masyrakat/dashboard');
+        if (role === 'masyarakat') {
+          router.push('/masyarakat/dashboard');
         } else if (role === 'operator') {
           router.push('/operator/dashboard');
         } else if (role === 'trc') {

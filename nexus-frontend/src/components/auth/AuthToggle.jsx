@@ -23,7 +23,7 @@ export default function AuthToggle({ isLogin, setIsLogin }) {
             : 'text-slate-500 hover:text-slate-700'
         }`}
       >
-        Daftar Masyrakat
+        Daftar Masyarakat
       </button>
     </div>
   );

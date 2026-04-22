@@ -36,7 +36,7 @@ export default function RegisterForm() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-2xl font-bold text-slate-800 mb-2">Pendaftaran Masyrakat</h2>
+      <h2 className="text-2xl font-bold text-slate-800 mb-2">Pendaftaran Masyarakat</h2>
       <p className="text-sm text-slate-500 mb-6">Bergabunglah untuk memberikan pelaporan darurat tervalidasi.</p>
       
       <form className="space-y-4" onSubmit={handleSubmit}>

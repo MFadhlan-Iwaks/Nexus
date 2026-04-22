@@ -9,7 +9,7 @@ export default function BroadcastModal({ isOpen, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert("SIRENE DIGITAL DIAKTIFKAN!\nBroadcast peringatan dini telah berhasil dikirim ke seluruh perangkat masyrakat di zona target.");
+    alert("SIRENE DIGITAL DIAKTIFKAN!\nBroadcast peringatan dini telah berhasil dikirim ke seluruh perangkat masyarakat di zona target.");
     onClose();
   };
 
@@ -39,7 +39,7 @@ export default function BroadcastModal({ isOpen, onClose }) {
           <div className="bg-amber-50 p-3 rounded-xl flex gap-3 border border-amber-100">
             <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 leading-relaxed font-medium">
-              Gunakan fitur ini hanya untuk keadaan darurat atau himbauan resmi. Pesan akan langsung muncul di layar utama (dashboard) seluruh masyrakat.
+              Gunakan fitur ini hanya untuk keadaan darurat atau himbauan resmi. Pesan akan langsung muncul di layar utama (dashboard) seluruh masyarakat.
             </p>
           </div>
 
@@ -85,7 +85,7 @@ export default function BroadcastModal({ isOpen, onClose }) {
               required
               className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none text-slate-700 leading-relaxed" 
               rows="4" 
-              placeholder="Tuliskan arahan evakuasi atau informasi penting untuk masyrakat di lapangan..."
+              placeholder="Tuliskan arahan evakuasi atau informasi penting untuk masyarakat di lapangan..."
             ></textarea>
           </div>
 
