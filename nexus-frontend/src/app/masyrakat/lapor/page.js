@@ -2,16 +2,15 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  ShieldAlert, MapPin, Navigation, Loader2, CheckCircle2, 
-  Camera, UploadCloud, ArrowLeft, Image as ImageIcon 
+import {
+  ShieldAlert, MapPin, Navigation, Loader2, CheckCircle2,
+  Camera, UploadCloud, ArrowLeft, Image as ImageIcon
 } from 'lucide-react';
 
 export default function LaporDaruratPage() {
   const router = useRouter();
-  
-  // States
-  const [locationState, setLocationState] = useState('idle'); 
+
+  const [locationState, setLocationState] = useState('idle');
   const [coords, setCoords] = useState('');
   const [lat, setLat] = useState(null);
   const [lng, setLng] = useState(null);
@@ -21,10 +20,9 @@ export default function LaporDaruratPage() {
 
   const fileInputRef = useRef(null);
 
-  // Fungsi Deteksi GPS Asli
   const handleGetLocation = () => {
     setLocationState('loading');
-    
+
     if (!navigator.geolocation) {
       alert("Browser Anda tidak mendukung fitur GPS.");
       setLocationState('idle');
@@ -38,7 +36,7 @@ export default function LaporDaruratPage() {
         setCoords(`${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)} (Akurasi: ${Math.round(position.coords.accuracy)}m)`);
         setLocationState('success');
       },
-      (error) => {
+      () => {
         alert("Gagal mendeteksi lokasi. Pastikan izin GPS aktif.");
         setLocationState('idle');
       },
@@ -46,19 +44,17 @@ export default function LaporDaruratPage() {
     );
   };
 
-  // Fungsi Handle File
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-        if (selectedFile.size > 5 * 1024 * 1024) { // Max 5MB
-            alert("Ukuran foto terlalu besar. Maksimal 5MB.");
-            return;
-        }
-        setFile(selectedFile);
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        alert("Ukuran foto terlalu besar. Maksimal 5MB.");
+        return;
+      }
+      setFile(selectedFile);
     }
   };
 
-  // Fungsi Kirim ke Backend Kibar
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (locationState !== 'success' || !lat || !lng) {
@@ -72,8 +68,6 @@ export default function LaporDaruratPage() {
 
     try {
       const token = localStorage.getItem('token');
-      
-      // Karena ada file, kita kirim sebagai FormData (bukan JSON)
       const data = new FormData();
       data.append('kategori_bencana', formData.kategori);
       data.append('deskripsi_kejadian', formData.deskripsi);
@@ -84,8 +78,7 @@ export default function LaporDaruratPage() {
       const response = await fetch('http://localhost:5000/api/laporan/tambah', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}` 
-          // Catatan: Jangan tambahkan 'Content-Type': 'application/json' jika pakai FormData
+          Authorization: `Bearer ${token}`
         },
         body: data
       });
@@ -94,7 +87,7 @@ export default function LaporDaruratPage() {
 
       if (response.ok) {
         alert("Laporan berhasil dikirim dan sedang menunggu validasi TRC!");
-        router.push('/relawan/dashboard'); 
+        router.push('/masyrakat/dashboard');
       } else {
         alert(result.message || "Gagal mengirim laporan.");
       }
@@ -109,7 +102,7 @@ export default function LaporDaruratPage() {
     <div className="min-h-screen bg-white font-sans text-slate-800 pb-20">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center gap-4">
-          <button onClick={() => router.push('/relawan/dashboard')} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={() => router.push('/masyrakat/dashboard')} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
             <ArrowLeft size={24} className="text-slate-700" />
           </button>
           <h1 className="font-bold text-lg text-slate-800">Laporan Kejadian Darurat</h1>
@@ -125,13 +118,11 @@ export default function LaporDaruratPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* SEKSI LOKASI */}
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-            <label className="block text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <label className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
               <MapPin size={18} className="text-red-600" /> Titik Koordinat Lokasi <span className="text-red-500">*</span>
             </label>
-            
+
             {locationState === 'idle' && (
               <button type="button" onClick={handleGetLocation} className="w-full py-4 bg-white border-2 border-dashed border-slate-300 rounded-lg text-slate-600 font-medium hover:border-red-500 transition-colors flex flex-col items-center gap-2">
                 <Navigation size={24} /> Deteksi Otomatis Lokasi Saya
@@ -159,23 +150,21 @@ export default function LaporDaruratPage() {
             )}
           </div>
 
-          {/* SEKSI UNGGAH FOTO */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <label className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
               <Camera size={18} className="text-slate-500" /> Unggah Bukti Visual <span className="text-red-500">*</span>
             </label>
-            
-            {/* Hidden File Input */}
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" // Prioritaskan kamera belakang di HP
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              className="hidden" 
+
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
             />
 
-            <div 
+            <div
               onClick={() => fileInputRef.current.click()}
               className={`w-full bg-slate-50 border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${file ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 hover:bg-slate-100'}`}
             >
@@ -197,14 +186,13 @@ export default function LaporDaruratPage() {
             </div>
           </div>
 
-          {/* SEKSI KATEGORI & DESKRIPSI */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-slate-800 mb-1">Kategori Bencana <span className="text-red-500">*</span></label>
-              <select 
+              <select
                 required
                 value={formData.kategori}
-                onChange={(e) => setFormData({...formData, kategori: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500"
               >
                 <option value="">-- Pilih Jenis Kejadian --</option>
@@ -218,10 +206,10 @@ export default function LaporDaruratPage() {
 
             <div>
               <label className="block text-sm font-bold text-slate-800 mb-1">Deskripsi Kejadian <span className="text-red-500">*</span></label>
-              <textarea 
+              <textarea
                 required
                 value={formData.deskripsi}
-                onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 text-sm"
                 rows="4"
                 placeholder="Contoh: Terjadi banjir setinggi lutut orang dewasa..."
@@ -229,9 +217,8 @@ export default function LaporDaruratPage() {
             </div>
           </div>
 
-          {/* SUBMIT BUTTON */}
           <div className="pt-4">
-            <button 
+            <button
               type="submit"
               disabled={isSubmitting}
               className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all"
@@ -240,7 +227,6 @@ export default function LaporDaruratPage() {
               {isSubmitting ? 'MENGIRIM...' : 'KIRIM LAPORAN KE PUSAT KOMANDO'}
             </button>
           </div>
-
         </form>
       </main>
     </div>
