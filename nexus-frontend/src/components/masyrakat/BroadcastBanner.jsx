@@ -21,7 +21,7 @@ export default function BroadcastBanner() {
           </div>
           <h4 className="font-bold text-slate-800 text-sm mb-1">Waspada Banjir Susulan di Zona A</h4>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Diimbau kepada seluruh relawan dan masyarakat di sekitar DAS Ciliwung untuk menjauhi bantaran sungai. Tinggi muka air berstatus Siaga 1.
+            Diimbau kepada seluruh masyrakat di sekitar DAS Ciliwung untuk menjauhi bantaran sungai. Tinggi muka air berstatus Siaga 1.
           </p>
         </div>
       </div>

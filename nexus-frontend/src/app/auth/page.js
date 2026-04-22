@@ -22,7 +22,7 @@ export default function AuthPage() {
             </button>
             <button onClick={() => setIsLogin(false)} 
                     className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${!isLogin ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
-              Daftar Relawan
+              Daftar Masyrakat
             </button>
           </div>
 

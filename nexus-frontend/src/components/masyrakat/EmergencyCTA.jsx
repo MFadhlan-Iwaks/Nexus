@@ -19,7 +19,7 @@ export default function EmergencyCTA() {
         </p>
         
         <button 
-          onClick={() => router.push('/relawan/lapor')} 
+          onClick={() => router.push('/masyrakat/lapor')} 
           className="w-full sm:w-auto bg-white text-red-600 hover:bg-slate-50 font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform transform active:scale-95"
         >
           <PlusCircle size={22} />

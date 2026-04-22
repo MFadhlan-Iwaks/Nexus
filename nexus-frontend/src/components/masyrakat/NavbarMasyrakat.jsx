@@ -3,7 +3,7 @@
 import { ShieldAlert, User, Bell, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export default function NavbarRelawan({ userName = "M. Fadhlan" }) {
+export default function NavbarMasyrakat({ userName = "M. Fadhlan" }) {
   const router = useRouter();
 
   const handleLogout = () => {
@@ -33,7 +33,7 @@ export default function NavbarRelawan({ userName = "M. Fadhlan" }) {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-slate-900">{userName}</p>
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Relawan</p>
+              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Masyrakat</p>
             </div>
             <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 border-2 border-white shadow-sm overflow-hidden">
               <User size={20} />
