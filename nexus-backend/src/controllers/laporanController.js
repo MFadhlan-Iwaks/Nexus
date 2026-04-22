@@ -3,9 +3,7 @@ const pool = require('../config/db');
 exports.buatLaporan = async (req, res) => {
   try {
     const { kategori_bencana, deskripsi_kejadian, longitude, latitude } = req.body;
-    const id_user = req.user.id; 
-    
-    // Ambil nama file dari multer (jika ada file yang diunggah)
+    const id_user = req.user.id;
     const bukti_visual = req.file ? req.file.filename : null;
 
     if (!longitude || !latitude) {
@@ -32,9 +30,7 @@ exports.buatLaporan = async (req, res) => {
 
 exports.getRiwayatLaporan = async (req, res) => {
   try {
-    const id_user = req.user.id; // Didapat dari token authMiddleware
-
-    // Query untuk mengambil data, diurutkan dari yang paling baru (DESC)
+    const id_user = req.user.id;
     const query = `
       SELECT id_laporan, kategori_bencana, deskripsi_kejadian, status, waktu_laporan, bukti_visual
       FROM laporan_bencana 
