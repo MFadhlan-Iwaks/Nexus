@@ -29,7 +29,12 @@ export default function UpdateProgressModal({ isOpen, onClose, task, onSuccess }
         catatan,
       });
 
-      onSuccess?.({ id: task.id, fase_penanganan: fase });
+      onSuccess?.({
+        id: task.id,
+        fase_penanganan: fase,
+        catatan,
+        status: fase === 'Penanganan Selesai' ? 'selesai' : 'penanganan',
+      });
       onClose();
       setFase(''); setCatatan('');
     } catch (err) {

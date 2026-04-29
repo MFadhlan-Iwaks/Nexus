@@ -75,10 +75,19 @@ export default function TRCDashboard() {
   }, []);
 
   // Callback setelah update progres → update fase di UI
-  const handleProgressSuccess = useCallback(({ id, fase_penanganan }) => {
+  const handleProgressSuccess = useCallback(({ id, fase_penanganan, catatan, status }) => {
     setLocalTasks((prev) =>
       prev?.map((t) =>
-        t.id !== id ? t : { ...t, trc: { ...t.trc, fase_penanganan } }
+        t.id !== id ? t : {
+          ...t,
+          status,
+          trc: {
+            ...t.trc,
+            fase_penanganan,
+            catatan,
+            waktu_update: new Date().toISOString(),
+          },
+        }
       )
     );
   }, []);

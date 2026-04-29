@@ -4,26 +4,24 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ShieldAlert, Ambulance, Megaphone, Activity, LogOut, LayoutDashboard, Users, Boxes, Truck, Send, Eye, Map } from 'lucide-react';
+import { ShieldAlert, Megaphone, Activity, LogOut, LayoutDashboard, Users, Boxes, Send, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import StatusInstansi from '@/components/Admin/StatusInstansi';
 import ManajemenPengguna from '@/components/Admin/ManajemenPengguna';
-import MonitoringTRC from '@/components/Admin/MonitoringTRC';
 import ReportDetailModal from '@/components/Admin/ReportDetailModal';
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
 import { LoadingState, ErrorState, EmptyState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
-import { getReports, approveReport, rejectReport } from '@/services/reportService';
+import { getReports } from '@/services/reportService';
 import { getBroadcasts, createBroadcast } from '@/services/broadcastService';
 import { getUsers, updateUserRole, toggleUserStatus } from '@/services/userService';
-import { getTrcUnits } from '@/services/trcService';
 import { getDashboardStats, getLogisticSummary, getFaskesSummary } from '@/services/dashboardService';
 import {
   mockAdminProfile, mockAdminNotifications,
   mockLogisticPoints, mockFaskesPoints,
 } from '@/data/mockData';
-import { getStatusBadgeClass, getStatusLabel, getSkalaClass, getLevelBadgeClass, getLogisticStatusClass } from '@/lib/utils';
+import { formatWaktuRelatif, getStatusBadgeClass, getStatusLabel, getSkalaClass, getLevelBadgeClass, getLogisticStatusClass } from '@/lib/utils';
 
 const MapWithNoSSR = dynamic(() => import('@/components/Admin/InteractiveMap'), {
   ssr: false,
@@ -38,16 +36,18 @@ const MapWithNoSSR = dynamic(() => import('@/components/Admin/InteractiveMap'), 
 });
 
 const mapPresets = {
-  nasional: { label: 'Indonesia', center: [-2.5, 118], zoom: 5, radius: 200000 },
-  provinsi: { label: 'Provinsi Jawa Barat', center: [-6.9, 107.6], zoom: 8, radius: 90000 },
-  kota: { label: 'Kota/Kabupaten', center: [-7.3274, 108.2232], zoom: 12, radius: 12000 },
-  lokal: { label: 'Kecamatan/Desa', center: [-7.3274, 108.2232], zoom: 14, radius: 3000 },
+  tasikmalaya: { label: 'Tasikmalaya', center: [-7.3274, 108.2207], zoom: 12, radius: 12000 },
+  kota: { label: 'Kota Tasikmalaya', center: [-7.3274, 108.2207], zoom: 13, radius: 8000 },
+  kecamatan: { label: 'Kecamatan/Desa', center: [-7.3274, 108.2207], zoom: 14, radius: 3000 },
+  jawa_barat: { label: 'Jawa Barat', center: [-6.9, 107.6], zoom: 8, radius: 90000 },
+  custom: { label: 'Kustom Admin', center: [-7.3274, 108.2207], zoom: 12, radius: 0 },
 };
 
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [mapScope, setMapScope] = useState('nasional');
+  const [mapScope, setMapScope] = useState('tasikmalaya');
+  const [monitoringCircle, setMonitoringCircle] = useState(mapPresets.tasikmalaya);
   const [selectedReport, setSelectedReport] = useState(null);
   const [broadcastForm, setBroadcastForm] = useState({
     pesan_peringatan: '', level: 'sedang', target_scope: 'nasional', target_nama: 'Indonesia',
@@ -56,7 +56,6 @@ export default function AdminExecutiveDashboard() {
   // --- Data via services ---
   const { data: reports, loading: loadingReports, error: errorReports, refetch: refetchReports } = useAsync(getReports);
   const { data: users, loading: loadingUsers } = useAsync(getUsers);
-  const { data: trcUnits, loading: loadingTrc } = useAsync(getTrcUnits);
   const { data: stats, loading: loadingStats } = useAsync(getDashboardStats);
   const { data: logisticSummary } = useAsync(getLogisticSummary);
   const { data: faskesSummary } = useAsync(getFaskesSummary);
@@ -69,12 +68,8 @@ export default function AdminExecutiveDashboard() {
   }, []);
 
   const [localUsers, setLocalUsers] = useState(null);
-  useMemo(() => { if (users && !localUsers) setLocalUsers(users); }, [users]);
 
-  const [localReports, setLocalReports] = useState(null);
-  useMemo(() => { if (reports && !localReports) setLocalReports(reports); }, [reports]);
-
-  const activeReports = (localReports || reports || []);
+  const activeReports = useMemo(() => reports || [], [reports]);
 
   const mapReports = useMemo(() =>
     activeReports.map((r) => ({
@@ -83,17 +78,20 @@ export default function AdminExecutiveDashboard() {
       category: r.masyarakat?.kategori,
       status: r.status,
       emergencyScale: r.trc?.skala_kedaruratan || 'sedang',
+      phase: r.trc?.fase_penanganan || '-',
     })), [activeReports]);
 
   const handleRoleChange = async (id, role) => {
     await updateUserRole(id, role);
-    setLocalUsers((prev) => prev?.map((u) => u.id === id ? { ...u, role } : u));
+    setLocalUsers((prev) =>
+      (prev || users || []).map((u) => u.id === id ? { ...u, role } : u)
+    );
   };
 
   const handleToggleUser = async (id) => {
     await toggleUserStatus(id);
     setLocalUsers((prev) =>
-      prev?.map((u) => u.id === id ? { ...u, aktif: !(u.aktif ?? u.active ?? true) } : u)
+      (prev || users || []).map((u) => u.id === id ? { ...u, aktif: !(u.aktif ?? u.active ?? true) } : u)
     );
   };
 
@@ -109,42 +107,52 @@ export default function AdminExecutiveDashboard() {
     }
   };
 
-  const handleAdminValidation = async (reportId, action) => {
-    try {
-      if (action === 'validasi') {
-        await approveReport(reportId);
-        setLocalReports((prev) =>
-          prev?.map((r) => r.id !== reportId ? r : { ...r, status: 'diproses' })
-        );
-        const r = activeReports.find((rep) => rep.id === reportId);
-        if (r) {
-          setBroadcastForm((prev) => ({
-            ...prev,
-            level: r.trc?.skala_kedaruratan || 'sedang',
-            target_scope: 'kecamatan',
-            target_nama: `Koordinat ${r.masyarakat?.latitude?.toFixed(3) ?? '-'}, ${r.masyarakat?.longitude?.toFixed(3) ?? '-'}`,
-            pesan_peringatan: `Laporan ${r.masyarakat?.kategori ?? 'bencana'} dari ${r.masyarakat?.nama ?? 'warga'} telah divalidasi. Mohon tingkatkan kewaspadaan.`,
-          }));
-          setActiveTab('broadcast');
-        }
-      } else {
-        await rejectReport(reportId);
-        setLocalReports((prev) =>
-          prev?.map((r) => r.id !== reportId ? r : { ...r, status: 'ditolak' })
-        );
-      }
-    } catch (err) {
-      alert(`Gagal memproses laporan: ${err.message}`);
+  const prepareBroadcastFromReport = (report) => {
+    setBroadcastForm((p) => ({
+      ...p,
+      level: report.trc?.skala_kedaruratan || 'sedang',
+      target_scope: 'kecamatan',
+      target_nama: `Koordinat ${report.masyarakat?.latitude?.toFixed(4) ?? '-'}, ${report.masyarakat?.longitude?.toFixed(4) ?? '-'}`,
+      pesan_peringatan: `Laporan ${report.masyarakat?.kategori ?? 'bencana'} dari ${report.masyarakat?.nama ?? 'warga'}: ${report.masyarakat?.deskripsi || ''}. Tim TRC telah memvalidasi.`,
+    }));
+    setActiveTab('broadcast');
+  };
+
+  const handleMapPresetChange = (scope) => {
+    setMapScope(scope);
+    if (scope === 'custom') {
+      setMonitoringCircle((prev) => ({ ...prev, label: 'Kustom Admin' }));
+      return;
     }
+    setMonitoringCircle(mapPresets[scope]);
+  };
+
+  const handleCircleCenterChange = (center) => {
+    setMapScope('custom');
+    setMonitoringCircle((prev) => ({ ...prev, center }));
+  };
+
+  const handleCircleRadiusChange = (value) => {
+    const radiusKm = Math.max(0, Number(value) || 0);
+    setMapScope('custom');
+    setMonitoringCircle((prev) => ({ ...prev, radius: radiusKm * 1000 }));
+  };
+
+  const handleCircleLabelChange = (value) => {
+    setMapScope('custom');
+    setMonitoringCircle((prev) => ({ ...prev, label: value || 'Kustom Admin' }));
+  };
+
+  const resetCircleToTasikmalaya = () => {
+    setMapScope('tasikmalaya');
+    setMonitoringCircle(mapPresets.tasikmalaya);
   };
 
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'peta', icon: Map, label: 'Peta Admin' },
     { id: 'broadcast', icon: Megaphone, label: 'Broadcast' },
     { id: 'pengguna', icon: Users, label: 'Pengguna' },
     { id: 'sumberdaya', icon: Boxes, label: 'Sumber Daya' },
-    { id: 'trc', icon: Truck, label: 'Monitoring TRC' },
   ];
 
   const getMenuClass = (tabId) =>
@@ -155,12 +163,10 @@ export default function AdminExecutiveDashboard() {
     }`;
 
   const headerTitles = {
-    dashboard: 'Dashboard Statistik',
-    peta: 'Peta Admin',
+    dashboard: 'Dashboard Statistik & Peta',
     broadcast: 'Broadcast Peringatan Dini',
     pengguna: 'Manajemen Pengguna',
     sumberdaya: 'Monitoring Sumber Daya',
-    trc: 'Monitoring TRC',
   };
 
   return (
@@ -223,7 +229,7 @@ export default function AdminExecutiveDashboard() {
                   <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                     {[
                       { label: 'Total Laporan', value: stats?.totalLaporan, color: 'slate' },
-                      { label: 'Menunggu & Diproses', value: (stats?.menunggu || 0) + (stats?.diproses || 0), color: 'blue' },
+                      { label: 'Tervalidasi & Diproses', value: (stats?.menunggu || 0) + (stats?.diproses || 0), color: 'blue' },
                       { label: 'Ditolak / Hoax', value: stats?.ditolak, color: 'red' },
                       { label: 'Selesai', value: stats?.selesai, color: 'emerald' },
                     ].map(({ label, value, color }) => (
@@ -234,10 +240,112 @@ export default function AdminExecutiveDashboard() {
                     ))}
                   </div>
 
+                  <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_320px] gap-6 mb-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden min-h-[420px]">
+                      <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3 bg-white z-10">
+                        <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                          <Activity size={18} className="text-blue-600" /> Pemantauan Spasial Live
+                        </h2>
+                        <select
+                          value={mapScope}
+                          onChange={(e) => handleMapPresetChange(e.target.value)}
+                          className="text-xs border border-slate-300 rounded-lg px-2 py-1 bg-white"
+                        >
+                          {Object.entries(mapPresets).map(([k, v]) => (
+                            <option key={k} value={k}>{v.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1 relative p-2 min-h-[360px]">
+                        <MapWithNoSSR
+                          disasterReports={mapReports}
+                          logisticPoints={mockLogisticPoints}
+                          faskesPoints={mockFaskesPoints}
+                          mapCenter={monitoringCircle.center}
+                          mapZoom={monitoringCircle.zoom}
+                          mapRadius={monitoringCircle.radius}
+                          circleLabel={monitoringCircle.label}
+                          isCircleEditable
+                          onCircleCenterChange={handleCircleCenterChange}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-1 gap-4">
+                      <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+                        <h3 className="font-bold text-red-900 mb-2 flex items-center gap-2"><Megaphone size={18} /> Peringatan Dini</h3>
+                        <p className="text-xs text-red-700 mb-4 leading-relaxed">Broadcast ke masyarakat berbasis wilayah dan level peringatan.</p>
+                        <button onClick={() => setActiveTab('broadcast')} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                          <Megaphone size={16} /> Buka Broadcast
+                        </button>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-2xl p-5">
+                        <h3 className="font-bold text-slate-800 mb-4 text-sm">Legenda Marker</h3>
+                        <div className="space-y-2 text-xs text-slate-700">
+                          <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-2" />Laporan Bencana</p>
+                          <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />Logistik Operator</p>
+                          <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />Faskes Operator</p>
+                        </div>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:col-span-2 2xl:col-span-1">
+                        <h3 className="font-bold text-slate-800 mb-3 text-sm">Lingkaran Pemantauan</h3>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <label className="font-bold text-slate-700 col-span-2">
+                            Nama Lingkaran
+                            <input
+                              value={monitoringCircle.label}
+                              onChange={(e) => handleCircleLabelChange(e.target.value)}
+                              className="w-full mt-1 border border-slate-300 rounded-lg p-2 font-normal"
+                              placeholder="Contoh: Zona Evakuasi Cipedes"
+                            />
+                          </label>
+                          <label className="font-bold text-slate-700">
+                            Latitude
+                            <input
+                              type="number"
+                              step="0.0001"
+                              value={monitoringCircle.center[0]}
+                              onChange={(e) => handleCircleCenterChange([Number(e.target.value), monitoringCircle.center[1]])}
+                              className="w-full mt-1 border border-slate-300 rounded-lg p-2 font-normal"
+                            />
+                          </label>
+                          <label className="font-bold text-slate-700">
+                            Longitude
+                            <input
+                              type="number"
+                              step="0.0001"
+                              value={monitoringCircle.center[1]}
+                              onChange={(e) => handleCircleCenterChange([monitoringCircle.center[0], Number(e.target.value)])}
+                              className="w-full mt-1 border border-slate-300 rounded-lg p-2 font-normal"
+                            />
+                          </label>
+                          <label className="font-bold text-slate-700 col-span-2">
+                            Radius Pemantauan (km)
+                            <input
+                              type="number"
+                              min="0"
+                              max="200"
+                              value={Math.round(monitoringCircle.radius / 1000)}
+                              onChange={(e) => handleCircleRadiusChange(e.target.value)}
+                              className="w-full mt-1 border border-slate-300 rounded-lg p-2 font-normal"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-3">Pilih Kustom Admin, geser/zoom peta, lalu klik area mana pun untuk membuat pusat lingkaran.</p>
+                        <button
+                          onClick={resetCircleToTasikmalaya}
+                          className="mt-3 w-full border border-blue-200 text-blue-700 hover:bg-blue-50 font-bold py-2 rounded-lg text-xs"
+                        >
+                          Reset ke Tasikmalaya
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {/* Laporan Aktif */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                      <h3 className="font-bold text-slate-800 mb-3">Laporan Aktif / Menunggu Tindakan</h3>
+                      <h3 className="font-bold text-slate-800 mb-3">Laporan Aktif Tervalidasi TRC</h3>
                       {loadingReports ? <LoadingState /> : errorReports ? <ErrorState message={errorReports} onRetry={refetchReports} /> : (
                         <div className="space-y-2 text-sm">
                           {activeReports.filter((r) => r.status === 'menunggu_admin' || r.status === 'diproses').map((r) => (
@@ -245,9 +353,17 @@ export default function AdminExecutiveDashboard() {
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-slate-800 truncate">{r.id} — {r.masyarakat?.kategori}</p>
                                 <p className="text-xs text-slate-500">Pelapor: {r.masyarakat?.nama} • Validator: {r.trc?.petugas}</p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-slate-500 mt-0.5">
                                   Skala: <span className={`font-bold ${getSkalaClass(r.trc?.skala_kedaruratan)}`}>{r.trc?.skala_kedaruratan}</span>
+                                  <span className="mx-1.5">|</span>
+                                  Fase TRC: <span className="font-bold text-slate-700">{r.trc?.fase_penanganan || '-'}</span>
                                 </p>
+                                {r.trc?.catatan && (
+                                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">Catatan: {r.trc.catatan}</p>
+                                )}
+                                {r.trc?.waktu_update && (
+                                  <p className="text-[11px] text-slate-400 mt-1">Update TRC: {formatWaktuRelatif(r.trc.waktu_update)}</p>
+                                )}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <button
@@ -293,56 +409,6 @@ export default function AdminExecutiveDashboard() {
                 </>
               )}
             </div>
-          )}
-
-          {/* ===== PETA TAB ===== */}
-          {activeTab === 'peta' && (
-            <>
-              <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative animate-in fade-in">
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white z-10">
-                  <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                    <Activity size={18} className="text-blue-600" /> Pemantauan Spasial Live
-                  </h2>
-                  <select
-                    value={mapScope}
-                    onChange={(e) => setMapScope(e.target.value)}
-                    className="text-xs border border-slate-300 rounded-lg px-2 py-1 bg-white"
-                  >
-                    {Object.entries(mapPresets).map(([k, v]) => (
-                      <option key={k} value={k}>{v.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-1 relative p-2">
-                  <MapWithNoSSR
-                    disasterReports={mapReports}
-                    logisticPoints={mockLogisticPoints}
-                    faskesPoints={mockFaskesPoints}
-                    mapCenter={mapPresets[mapScope].center}
-                    mapZoom={mapPresets[mapScope].zoom}
-                    mapRadius={mapPresets[mapScope].radius}
-                  />
-                </div>
-              </div>
-
-              <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0 overflow-y-auto pb-6 animate-in slide-in-from-right-8">
-                <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
-                  <h3 className="font-bold text-red-900 mb-2 flex items-center gap-2"><Megaphone size={18} /> Peringatan Dini (EWS)</h3>
-                  <p className="text-xs text-red-700 mb-4 leading-relaxed">Broadcast ke masyarakat berbasis wilayah dan level peringatan.</p>
-                  <button onClick={() => setActiveTab('broadcast')} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
-                    <Megaphone size={16} /> Buka Pusat Broadcast
-                  </button>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                  <h3 className="font-bold text-slate-800 mb-4 text-sm">Legenda Marker</h3>
-                  <div className="space-y-2 text-xs text-slate-700">
-                    <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-2" />Laporan Bencana</p>
-                    <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />Logistik Operator</p>
-                    <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />Faskes Operator</p>
-                  </div>
-                </div>
-              </div>
-            </>
           )}
 
           {/* ===== BROADCAST TAB ===== */}
@@ -420,7 +486,7 @@ export default function AdminExecutiveDashboard() {
             <div className="w-full h-full">
               {loadingUsers ? <LoadingState /> : (
                 <ManajemenPengguna
-                  users={localUsers || []}
+                  users={localUsers || users || []}
                   onRoleChange={handleRoleChange}
                   onToggleUser={handleToggleUser}
                 />
@@ -438,15 +504,6 @@ export default function AdminExecutiveDashboard() {
             </div>
           )}
 
-          {/* ===== TRC TAB ===== */}
-          {activeTab === 'trc' && (
-            <div className="w-full h-full">
-              {loadingTrc ? <LoadingState /> : (
-                <MonitoringTRC trcMembers={trcUnits || []} reports={activeReports} />
-              )}
-            </div>
-          )}
-
         </div>
 
         {/* Report Detail Modal */}
@@ -454,19 +511,8 @@ export default function AdminExecutiveDashboard() {
           <ReportDetailModal
             report={selectedReport}
             onClose={() => setSelectedReport(null)}
-            onValidation={(reportId, action) => {
-              handleAdminValidation(reportId, action);
-              setSelectedReport(null);
-            }}
             onCreateBroadcast={(report) => {
-              setBroadcastForm((p) => ({
-                ...p,
-                level: report.trc?.skala_kedaruratan || 'sedang',
-                target_scope: 'kecamatan',
-                target_nama: `Koordinat ${report.masyarakat?.latitude?.toFixed(4)}, ${report.masyarakat?.longitude?.toFixed(4)}`,
-                pesan_peringatan: `Laporan ${report.masyarakat?.kategori} dari ${report.masyarakat?.nama}: ${report.masyarakat?.deskripsi || ''}. Tim TRC telah memvalidasi.`,
-              }));
-              setActiveTab('broadcast');
+              prepareBroadcastFromReport(report);
               setSelectedReport(null);
             }}
           />

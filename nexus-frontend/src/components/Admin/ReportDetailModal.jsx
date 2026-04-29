@@ -4,10 +4,10 @@
 // Modal detail laporan — kompatibel dengan struktur data mockData.js
 
 import React from 'react';
-import { X, Megaphone, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Megaphone } from 'lucide-react';
 import { formatWaktu, getSkalaClass, getStatusLabel } from '@/lib/utils';
 
-export default function ReportDetailModal({ report, onClose, onCreateBroadcast, onValidation }) {
+export default function ReportDetailModal({ report, onClose, onCreateBroadcast }) {
   if (!report) return null;
 
   // Support field name lama (name/contact/submitted_at/bukti_visual) dan baru (nama/waktu_lapor/foto)
@@ -30,6 +30,7 @@ export default function ReportDetailModal({ report, onClose, onCreateBroadcast, 
   const fasePenanganan = t.fase_penanganan || '-';
   const catatan = t.catatan || '-';
   const waktuValidasi = t.waktu_validasi || t.validated_at;
+  const waktuUpdate = t.waktu_update;
   const fotoBuktiTrc = t.foto_bukti || t.foto_bukti_validasi;
 
   return (
@@ -95,8 +96,11 @@ export default function ReportDetailModal({ report, onClose, onCreateBroadcast, 
                   <span className="font-semibold">Skala Kedaruratan:</span>{' '}
                   <span className={`font-bold ${getSkalaClass(skala)}`}>{skala.toUpperCase()}</span>
                 </div>
-                <div><span className="font-semibold">Fase:</span> {fasePenanganan}</div>
+                <div><span className="font-semibold">Fase Penanganan:</span> {fasePenanganan}</div>
                 <div><span className="font-semibold">Waktu Validasi:</span> {formatWaktu(waktuValidasi)}</div>
+                {waktuUpdate && (
+                  <div><span className="font-semibold">Update Terakhir:</span> {formatWaktu(waktuUpdate)}</div>
+                )}
                 {catatan && (
                   <div className="sm:col-span-2">
                     <span className="font-semibold">Catatan:</span>
@@ -119,22 +123,6 @@ export default function ReportDetailModal({ report, onClose, onCreateBroadcast, 
           <button onClick={onClose} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-200">
             Tutup
           </button>
-          {report.status === 'menunggu_admin' && onValidation && (
-            <>
-              <button
-                onClick={() => onValidation(report.id, 'tolak')}
-                className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg font-medium text-sm flex items-center gap-1.5 hover:bg-red-100"
-              >
-                <XCircle size={16} /> Tolak
-              </button>
-              <button
-                onClick={() => onValidation(report.id, 'validasi')}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm flex items-center gap-1.5"
-              >
-                <CheckCircle2 size={16} /> Setujui & Proses
-              </button>
-            </>
-          )}
           {onCreateBroadcast && (
             <button
               onClick={() => onCreateBroadcast(report)}

@@ -59,7 +59,7 @@ export function getStatusBadgeClass(status) {
 }
 
 const STATUS_LABEL = {
-  menunggu_admin: 'Menunggu Admin',
+  menunggu_admin: 'Tervalidasi TRC',
   diproses:       'Sedang Ditangani',
   selesai:        'Selesai',
   ditolak:        'Ditolak',

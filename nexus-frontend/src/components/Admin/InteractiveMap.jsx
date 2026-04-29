@@ -1,18 +1,43 @@
 // src/components/admin/InteractiveMap.jsx
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Popup, Circle } from 'react-leaflet';
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
+
+function MapViewSync({ center, zoom }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, map, zoom]);
+
+  return null;
+}
+
+function EditableCircleCenter({ enabled, onChange }) {
+  useMapEvents({
+    click(e) {
+      if (!enabled) return;
+      onChange?.([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+
+  return null;
+}
 
 export default function InteractiveMap({
   disasterReports = [],
   logisticPoints = [],
   faskesPoints = [],
-  mapCenter = [-2.5, 118],
-  mapZoom = 5,
-  mapRadius = 200000,
+  mapCenter = [-7.3274, 108.2207],
+  mapZoom = 12,
+  mapRadius = 12000,
+  circleLabel = 'Pusat Lingkaran Pemantauan',
+  isCircleEditable = false,
+  onCircleCenterChange,
 }) {
 
   const getReportColor = (report) => {
@@ -38,6 +63,9 @@ export default function InteractiveMap({
         scrollWheelZoom={true} 
         className="w-full h-full z-0"
       >
+        <MapViewSync center={mapCenter} zoom={mapZoom} />
+        <EditableCircleCenter enabled={isCircleEditable} onChange={onCircleCenterChange} />
+
         {/* Layer Peta Dasar dari OpenStreetMap */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -45,11 +73,22 @@ export default function InteractiveMap({
         />
 
         {/* Lingkaran Radius Pemantauan BPBD */}
-        <Circle 
-          center={mapCenter} 
-          pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.05 }} 
-          radius={mapRadius} 
-        />
+        {mapRadius > 0 && (
+          <Circle
+            center={mapCenter}
+            pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.08 }}
+            radius={mapRadius}
+          />
+        )}
+        <CircleMarker center={mapCenter} radius={5} pathOptions={{ color: '#1d4ed8', fillColor: '#1d4ed8', fillOpacity: 1 }}>
+          <Popup>
+            <div className="p-1">
+              <h3 className="font-bold text-sm text-slate-800">{circleLabel}</h3>
+              <p className="text-xs text-slate-600">{mapCenter[0].toFixed(5)}, {mapCenter[1].toFixed(5)}</p>
+              <p className="text-xs text-slate-600">Radius: {mapRadius > 0 ? `${(mapRadius / 1000).toFixed(1)} km` : 'Nonaktif'}</p>
+            </div>
+          </Popup>
+        </CircleMarker>
 
         {/* Marker Laporan Bencana */}
         {disasterReports.map((point) => (
@@ -58,7 +97,8 @@ export default function InteractiveMap({
               <div className="p-1">
                 <h3 className="font-bold text-slate-900 mb-1 text-sm">Laporan {point.category}</h3>
                 <p className="text-xs text-slate-600 mb-1">Status: <span className="font-bold text-slate-800">{point.status}</span></p>
-                <p className="text-xs text-slate-600">Skala: <span className="font-bold">{point.emergencyScale}</span></p>
+                <p className="text-xs text-slate-600 mb-1">Skala: <span className="font-bold">{point.emergencyScale}</span></p>
+                <p className="text-xs text-slate-600">Fase TRC: <span className="font-bold">{point.phase}</span></p>
               </div>
             </Popup>
           </CircleMarker>

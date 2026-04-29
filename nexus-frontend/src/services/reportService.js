@@ -88,7 +88,8 @@ export async function getReportById(id) {
 export async function validateReport(reportId, payload) {
   await simulateDelay(300);
   // Tulis ke store → admin dashboard langsung terbaca
-  patchReport(reportId, { status: 'menunggu_admin' });
+  const isValid = payload.status_validasi === 'valid';
+  patchReport(reportId, { status: isValid ? 'menunggu_admin' : 'ditolak' });
   patchReportTrc(reportId, {
     status_validasi: payload.status_validasi,
     skala_kedaruratan: payload.skala_kedaruratan,
@@ -107,7 +108,8 @@ export async function validateReport(reportId, payload) {
  */
 export async function updateReportProgress(reportId, payload) {
   await simulateDelay(300);
-  patchReport(reportId, { status: 'diproses' });
+  const isSelesai = payload.fase_penanganan === 'Penanganan Selesai';
+  patchReport(reportId, { status: isSelesai ? 'selesai' : 'diproses' });
   patchReportTrc(reportId, {
     fase_penanganan: payload.fase_penanganan,
     catatan: payload.catatan ?? '',
