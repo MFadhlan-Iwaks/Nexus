@@ -1,20 +1,29 @@
 import { X, CheckCircle2, AlertTriangle, Camera, UploadCloud, BarChart } from 'lucide-react';
 import { useState } from 'react';
 
-export default function ValidationModal({ isOpen, onClose, task }) {
+export default function ValidationModal({ isOpen, onClose, task, onSubmit, isSubmitting = false }) {
   const [status, setStatus] = useState(null);
-  const [skala, setSkala] = useState(null); 
+  const [skala, setSkala] = useState(null);
+  const [pesanSituasi, setPesanSituasi] = useState('');
+  const [fotoFile, setFotoFile] = useState(null);
 
   if (!isOpen || !task) return null;
 
 
-  const isFormComplete = status === 'hoax' || (status === 'valid' && skala !== null);
+  const isFormComplete = (status === 'hoax' || (status === 'valid' && skala !== null)) && Boolean(fotoFile);
 
-  const handleKirim = () => {
-    alert(`Validasi berhasil dikirim!\nStatus: ${status.toUpperCase()}\n${status === 'valid' ? 'Skala: ' + skala.toUpperCase() : ''}`);
-    onClose();
+  const handleKirim = async () => {
+    await onSubmit({
+      taskId: task.id,
+      status,
+      skala,
+      pesanSituasi,
+      fotoFile
+    });
     setStatus(null);
     setSkala(null);
+    setPesanSituasi('');
+    setFotoFile(null);
   };
 
   return (
@@ -74,22 +83,41 @@ export default function ValidationModal({ isOpen, onClose, task }) {
             <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
               <Camera size={16} /> {status === 'valid' ? '3.' : '2.'} Foto Bukti Validasi <span className="text-red-500">*</span>
             </label>
-            <div className="w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
+            <label className="w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => setFotoFile(e.target.files?.[0] || null)}
+              />
               <UploadCloud size={24} className="text-slate-400 mb-2" />
               <p className="text-sm font-semibold text-slate-600">Ambil Foto Langsung</p>
               <p className="text-xs text-slate-400 mt-1 text-center">Wajib untuk pertanggungjawaban TRC</p>
-            </div>
+              {fotoFile && <p className="text-xs text-emerald-600 mt-2 font-semibold">{fotoFile.name}</p>}
+            </label>
+          </div>
+
+          <div>
+            <label className="text-sm font-bold text-slate-700 mb-2 block">Catatan Lapangan</label>
+            <textarea
+              className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-slate-500 outline-none"
+              rows="3"
+              placeholder="Contoh: Akses jalan sempit, perlu dukungan unit logistik tambahan."
+              value={pesanSituasi}
+              onChange={(e) => setPesanSituasi(e.target.value)}
+            ></textarea>
           </div>
         </div>
 
         <div className="p-4 sm:p-5 border-t border-slate-100 bg-white sticky bottom-0 z-10">
           <button 
-            disabled={!isFormComplete}
+            disabled={!isFormComplete || isSubmitting}
             onClick={handleKirim}
             className={`w-full font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2
-              ${isFormComplete ? 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+              ${isFormComplete && !isSubmitting ? 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
-            <CheckCircle2 size={18} /> Kirim Hasil Validasi
+            <CheckCircle2 size={18} /> {isSubmitting ? 'Mengirim...' : 'Kirim Hasil Validasi'}
           </button>
         </div>
 

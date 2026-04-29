@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, User } from 'lucide-react';
 
 function getInitials(name = '') {
@@ -16,17 +16,26 @@ export default function UserProfileDropdown({
   avatarClassName = 'bg-slate-100 text-slate-700'
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [storedUser, setStoredUser] = useState(null);
   const wrapperRef = useRef(null);
 
-  useEffect(() => {
+  const userSnapshot = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined') return () => {};
+      window.addEventListener('storage', onStoreChange);
+      return () => window.removeEventListener('storage', onStoreChange);
+    },
+    () => localStorage.getItem('user') || '',
+    () => null
+  );
+
+  const storedUser = useMemo(() => {
+    if (!userSnapshot) return null;
     try {
-      const raw = localStorage.getItem('user');
-      if (raw) setStoredUser(JSON.parse(raw));
+      return JSON.parse(userSnapshot);
     } catch {
-      setStoredUser(null);
+      return null;
     }
-  }, []);
+  }, [userSnapshot]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
