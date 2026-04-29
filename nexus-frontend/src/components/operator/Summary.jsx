@@ -81,7 +81,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
             {/* Stats faskes */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Total Unit</p>
+                <p className="text-xs text-slate-500">Total Fasilitas</p>
                 <p className="text-xl font-bold text-slate-800 mt-1">{faskesStats.total}</p>
               </div>
               <div className="flex gap-2">

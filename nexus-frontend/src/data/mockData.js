@@ -193,15 +193,21 @@ export const mockLogistics = [
   { id: 'log-3', nama: 'Selimut Ruang Isolasi', kategori: 'Sandang & Selimut', stok: 22, unit: 'Pcs', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T08:55:00Z' },
   { id: 'log-4', nama: 'Kantong Darah O+', kategori: 'Medis', stok: 0, unit: 'Kantong', institusi: 'PMI Tasikmalaya', terakhir_update: '2026-04-29T08:40:00Z' },
   { id: 'log-5', nama: 'Masker N95', kategori: 'Medis', stok: 15, unit: 'Box', institusi: 'Puskesmas Kawalu', terakhir_update: '2026-04-29T08:30:00Z' },
+  { id: 'log-6', nama: 'Obat-obatan Darurat', kategori: 'Medis', stok: 65, unit: 'Paket', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T08:25:00Z' },
+  { id: 'log-7', nama: 'Oksigen Medis', kategori: 'Medis', stok: 12, unit: 'Tabung', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T08:20:00Z' },
+  { id: 'log-8', nama: 'APD Lengkap', kategori: 'Medis', stok: 40, unit: 'Set', institusi: 'Puskesmas Kawalu', terakhir_update: '2026-04-29T08:10:00Z' },
+  { id: 'log-9', nama: 'Infus RL', kategori: 'Medis', stok: 80, unit: 'Botol', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T08:05:00Z' },
 ];
 
 // --- FASKES (Fasilitas Kesehatan) ---
 export const mockFaskes = [
-  { id: 'fsk-1', nama: 'RSUD dr. Soekardjo (IGD)', kategori: 'Ruang Darurat (IGD)', stok: 5, unit: 'Bed', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T09:05:00Z' },
-  { id: 'fsk-2', nama: 'RSUD dr. Soekardjo (Rawat Inap Lt.2)', kategori: 'Kamar Rawat Inap', stok: 14, unit: 'Bed', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T09:05:00Z' },
-  { id: 'fsk-3', nama: 'RSUD dr. Soekardjo (Bank Darah)', kategori: 'Stok Kantong Darah', stok: 8, unit: 'Kantong', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T09:05:00Z' },
-  { id: 'fsk-4', nama: 'Puskesmas Cihideung (IGD)', kategori: 'Ruang Darurat (IGD)', stok: 3, unit: 'Bed', institusi: 'Puskesmas Cihideung', terakhir_update: '2026-04-29T08:58:00Z' },
-  { id: 'fsk-5', nama: 'PMI Tasikmalaya (Donor Darah)', kategori: 'Stok Kantong Darah', stok: 0, unit: 'Kantong', institusi: 'PMI Tasikmalaya', terakhir_update: '2026-04-29T08:40:00Z' },
+  { id: 'FSK-001', nama_fasilitas: 'RSUD dr. Soekardjo (IGD)', kategori: 'Ruang Darurat (IGD)', kapasitas_total: 20, kapasitas_tersedia: 5, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 16:00' },
+  { id: 'FSK-002', nama_fasilitas: 'RSUD dr. Soekardjo (Rawat Inap Lt.2)', kategori: 'Rawat Inap', kapasitas_total: 60, kapasitas_tersedia: 14, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 16:00' },
+  { id: 'FSK-003', nama_fasilitas: 'RSUD dr. Soekardjo (ICU)', kategori: 'ICU', kapasitas_total: 12, kapasitas_tersedia: 2, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 15:45' },
+  { id: 'FSK-004', nama_fasilitas: 'RSUD dr. Soekardjo (Ruang Isolasi)', kategori: 'Ruang Isolasi', kapasitas_total: 18, kapasitas_tersedia: 0, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 15:30' },
+  { id: 'FSK-005', nama_fasilitas: 'Puskesmas Cihideung (IGD)', kategori: 'Ruang Darurat (IGD)', kapasitas_total: 8, kapasitas_tersedia: 3, satuan: 'Bed', lokasi: 'Puskesmas Cihideung', updated_at: '2026-04-29 15:20' },
+  { id: 'FSK-006', nama_fasilitas: 'Puskesmas Kawalu (Observasi)', kategori: 'Ruang Observasi', kapasitas_total: 10, kapasitas_tersedia: 7, satuan: 'Bed', lokasi: 'Puskesmas Kawalu', updated_at: '2026-04-29 15:10' },
+  { id: 'FSK-007', nama_fasilitas: 'RSUD dr. Soekardjo (Kamar Perawatan)', kategori: 'Kamar Perawatan', kapasitas_total: 45, kapasitas_tersedia: 20, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 15:00' },
 ];
 
 // --- USERS ---
@@ -299,9 +305,9 @@ export const mockLogisticSummary = [
 
 // --- FASKES SUMMARY (untuk Admin Dashboard) ---
 export const mockFaskesSummary = [
-  { id: 'fs-1', institution: 'RSUD dr. Soekardjo', totalUnits: 4, availableCapacity: 23, status: 'Tersedia', updatedAt: '09:05 WIB' },
-  { id: 'fs-2', institution: 'Puskesmas Cihideung', totalUnits: 3, availableCapacity: 4, status: 'Hampir Penuh', updatedAt: '08:58 WIB' },
-  { id: 'fs-3', institution: 'PMI Tasikmalaya', totalUnits: 2, availableCapacity: 0, status: 'Penuh', updatedAt: '08:40 WIB' },
+  { id: 'fs-1', institution: 'RSUD dr. Soekardjo', totalUnits: 5, availableCapacity: 41, status: 'Tersedia', updatedAt: '16:00 WIB' },
+  { id: 'fs-2', institution: 'Puskesmas Cihideung', totalUnits: 1, availableCapacity: 3, status: 'Hampir Penuh', updatedAt: '15:20 WIB' },
+  { id: 'fs-3', institution: 'Puskesmas Kawalu', totalUnits: 1, availableCapacity: 7, status: 'Tersedia', updatedAt: '15:10 WIB' },
 ];
 
 // --- MAP POINTS (untuk Admin Peta) ---
@@ -312,9 +318,10 @@ export const mockLogisticPoints = [
 ];
 
 export const mockFaskesPoints = [
-  { id: 'FP-1', label: 'IGD RSUD dr. Soekardjo', status: 'aman', coordinates: [-7.331, 108.226], capacity: 14 },
-  { id: 'FP-2', label: 'Puskesmas Cihideung', status: 'menipis', coordinates: [-7.323, 108.217], capacity: 8 },
-  { id: 'FP-3', label: 'PMI Tasikmalaya', status: 'habis', coordinates: [-7.318, 108.235], capacity: 0 },
+  { id: 'FP-1', label: 'IGD RSUD dr. Soekardjo', status: 'Hampir Penuh', coordinates: [-7.331, 108.226], capacity: 5 },
+  { id: 'FP-2', label: 'ICU RSUD dr. Soekardjo', status: 'Hampir Penuh', coordinates: [-7.333, 108.224], capacity: 2 },
+  { id: 'FP-3', label: 'Ruang Isolasi RSUD', status: 'Penuh', coordinates: [-7.334, 108.225], capacity: 0 },
+  { id: 'FP-4', label: 'Observasi Puskesmas Kawalu', status: 'Tersedia', coordinates: [-7.351, 108.209], capacity: 7 },
 ];
 
 // --- NOTIFICATIONS ---

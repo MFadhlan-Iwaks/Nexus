@@ -11,15 +11,19 @@ export default function ModalUpdateData({ isOpen, onClose, selectedItem, onSave 
     }
   }, [selectedItem]);
 
-  const liveStatus = latestStock <= 0 ? 'Habis' : latestStock <= 100 ? 'Menipis' : 'Aman';
+  const liveStatus = isFaskes
+    ? latestStock <= 0 ? 'Penuh' : latestStock <= 5 ? 'Hampir Penuh' : 'Tersedia'
+    : latestStock <= 0 ? 'Habis' : latestStock <= 100 ? 'Menipis' : 'Aman';
 
   const getStatusStyle = (status) => {
     if (status === 'Habis') return 'bg-red-50 border-red-200 text-red-700';
     if (status === 'Menipis') return 'bg-amber-50 border-amber-200 text-amber-700';
+    if (status === 'Penuh') return 'bg-red-50 border-red-200 text-red-700';
+    if (status === 'Hampir Penuh') return 'bg-amber-50 border-amber-200 text-amber-700';
     return 'bg-emerald-50 border-emerald-200 text-emerald-700';
   };
 
-  const StatusIcon = liveStatus === 'Habis' ? OctagonX : liveStatus === 'Menipis' ? AlertTriangle : ShieldCheck;
+  const StatusIcon = liveStatus === 'Habis' || liveStatus === 'Penuh' ? OctagonX : liveStatus === 'Menipis' || liveStatus === 'Hampir Penuh' ? AlertTriangle : ShieldCheck;
 
   if (!isOpen || !selectedItem) return null;
 
@@ -62,7 +66,7 @@ export default function ModalUpdateData({ isOpen, onClose, selectedItem, onSave 
           </div>
 
           <div className={`rounded-xl border p-3 flex items-center justify-between ${getStatusStyle(liveStatus)}`}>
-            <p className="text-xs font-semibold">Status stok setelah update</p>
+            <p className="text-xs font-semibold">Status {isFaskes ? 'kapasitas' : 'stok'} setelah update</p>
             <p className="text-sm font-bold flex items-center gap-1.5">
               <StatusIcon size={16} /> {liveStatus}
             </p>

@@ -34,7 +34,7 @@ export default function StatusInstansi({ logisticSummary = [], faskesSummary = [
       <div className="mb-6">
         <h2 className="font-bold text-slate-800 text-lg">Monitoring Sumber Daya Instansi</h2>
         <p className="text-xs text-slate-500">
-          Ringkasan stok logistik dan kapasitas faskes dari operator dengan status terkini.
+          Ringkasan stok barang bantuan/medis dan kapasitas layanan medis dari operator dengan status terkini.
         </p>
       </div>
 
@@ -44,7 +44,7 @@ export default function StatusInstansi({ logisticSummary = [], faskesSummary = [
         <div className="border border-slate-200 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Package size={18} /></div>
-            <h3 className="font-bold text-slate-800">Ringkasan Logistik Operator</h3>
+            <h3 className="font-bold text-slate-800">Ringkasan Stok Logistik</h3>
           </div>
 
           {logisticSummary.length === 0 ? (
@@ -74,7 +74,7 @@ export default function StatusInstansi({ logisticSummary = [], faskesSummary = [
         <div className="border border-slate-200 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg"><Ambulance size={18} /></div>
-            <h3 className="font-bold text-slate-800">Ringkasan Kapasitas Faskes</h3>
+            <h3 className="font-bold text-slate-800">Ringkasan Kapasitas Layanan Medis</h3>
           </div>
 
           {faskesSummary.length === 0 ? (

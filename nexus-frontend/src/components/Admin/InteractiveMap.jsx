@@ -24,8 +24,9 @@ export default function InteractiveMap({
   };
 
   const getResourceColor = (status, type) => {
-    if (status === 'penuh') return '#ef4444';
-    if (status === 'menipis') return '#f59e0b';
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'habis' || normalized === 'penuh') return '#ef4444';
+    if (normalized === 'menipis' || normalized === 'hampir penuh') return '#f59e0b';
     return type === 'faskes' ? '#10b981' : '#3b82f6';
   };
 

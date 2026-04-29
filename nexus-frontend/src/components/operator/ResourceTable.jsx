@@ -21,11 +21,14 @@ export default function ResourceTable({
   const getCategoryClass = (category) => {
     if (category?.includes('IGD')) return 'bg-blue-100 text-blue-700 border-blue-200';
     if (category?.includes('Rawat')) return 'bg-violet-100 text-violet-700 border-violet-200';
-    if (category?.includes('Darah')) return 'bg-rose-100 text-rose-700 border-rose-200';
+    if (category?.includes('ICU')) return 'bg-red-100 text-red-700 border-red-200';
+    if (category?.includes('Isolasi')) return 'bg-teal-100 text-teal-700 border-teal-200';
+    if (category?.includes('Observasi')) return 'bg-sky-100 text-sky-700 border-sky-200';
+    if (category?.includes('Darurat')) return 'bg-blue-100 text-blue-700 border-blue-200';
     if (category?.includes('Pangan')) return 'bg-lime-100 text-lime-700 border-lime-200';
     if (category?.includes('Sandang')) return 'bg-cyan-100 text-cyan-700 border-cyan-200';
     if (category?.includes('Peralatan')) return 'bg-orange-100 text-orange-700 border-orange-200';
-    if (category?.includes('Obat')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (category?.includes('Obat') || category?.includes('Medis')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     return 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
@@ -202,8 +205,9 @@ export default function ResourceTable({
       <table className="w-full text-left min-w-180">
         <thead>
           <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-            <th className="p-4 font-semibold">Nama / Kategori</th>
-            <th className="p-4 font-semibold">Sisa Kapasitas/Stok</th>
+            <th className="p-4 font-semibold">{isFaskes ? 'Nama Fasilitas' : 'Nama / Kategori'}</th>
+            {isFaskes && <th className="p-4 font-semibold">Kategori Layanan</th>}
+            <th className="p-4 font-semibold">{isFaskes ? 'Sisa Kapasitas' : 'Sisa Stok'}</th>
             {(isLogistik || isFaskes) && <th className="p-4 font-semibold">Status</th>}
             <th className="p-4 font-semibold text-right">Aksi</th>
           </tr>
@@ -219,11 +223,22 @@ export default function ResourceTable({
               >
                 <td className="p-4 font-bold text-slate-800">
                   {item.nama}
-                  <br />
-                  <span className={`inline-flex mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getCategoryClass(item.kategori)}`}>
-                    {item.kategori}
-                  </span>
+                  {!isFaskes && (
+                    <>
+                      <br />
+                      <span className={`inline-flex mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getCategoryClass(item.kategori)}`}>
+                        {item.kategori}
+                      </span>
+                    </>
+                  )}
                 </td>
+                {isFaskes && (
+                  <td className="p-4">
+                    <span className={`inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getCategoryClass(item.kategori)}`}>
+                      {item.kategori}
+                    </span>
+                  </td>
+                )}
                 <td className={`p-4 font-bold text-lg ${item.stok <= 0 ? 'text-red-600' : 'text-slate-800'}`}>
                   {item.stok} <span className="text-sm font-normal text-slate-500">{item.unit}</span>
                 </td>
@@ -246,7 +261,7 @@ export default function ResourceTable({
 
           {(isLogistik || isFaskes) && filteredResources.length === 0 && (
             <tr>
-              <td colSpan={4} className="p-8 text-center">
+              <td colSpan={isFaskes ? 5 : 4} className="p-8 text-center">
                 <p className="text-sm font-semibold text-slate-700">
                   {isFaskes ? 'Data faskes tidak ditemukan' : 'Data logistik tidak ditemukan'}
                 </p>

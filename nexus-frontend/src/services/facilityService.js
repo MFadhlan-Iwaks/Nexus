@@ -10,6 +10,21 @@ import { getFaskesState, patchFaskes, addFaskes } from '@/data/store';
 
 const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
+const toFaskesView = (item) => {
+  const kapasitas = Number(item.kapasitas_tersedia ?? item.stok ?? 0);
+  return {
+    ...item,
+    nama: item.nama_fasilitas ?? item.nama,
+    stok: kapasitas,
+    unit: item.satuan ?? item.unit ?? 'Bed',
+    institusi: item.lokasi ?? item.institusi,
+    terakhir_update: item.updated_at ?? item.terakhir_update,
+    kapasitas_tersedia: kapasitas,
+    satuan: item.satuan ?? item.unit ?? 'Bed',
+    lokasi: item.lokasi ?? item.institusi,
+  };
+};
+
 /**
  * Hitung status faskes berdasarkan kapasitas tersedia.
  * @param {number} kapasitas - jumlah bed/kapasitas tersedia
@@ -27,7 +42,7 @@ export function getFaskesStatus(kapasitas) {
  */
 export async function getFacilities() {
   await simulateDelay();
-  return getFaskesState();
+  return getFaskesState().map(toFaskesView);
 }
 
 /**
@@ -38,13 +53,17 @@ export async function getFacilities() {
 export async function createFacility(data) {
   await simulateDelay(200);
   const newItem = {
-    id: `fsk-${Date.now()}`,
-    ...data,
-    stok: Number(data.stok),
-    terakhir_update: new Date().toISOString(),
+    id: `FSK-${Date.now()}`,
+    nama_fasilitas: data.nama_fasilitas ?? data.nama,
+    kategori: data.kategori,
+    kapasitas_total: Number(data.kapasitas_total ?? data.stok ?? 0),
+    kapasitas_tersedia: Number(data.kapasitas_tersedia ?? data.stok ?? 0),
+    satuan: data.satuan ?? data.unit ?? 'Bed',
+    lokasi: data.lokasi ?? data.institusi,
+    updated_at: new Date().toISOString(),
   };
   addFaskes(newItem);
-  return { message: 'Fasilitas berhasil ditambahkan.', item: newItem };
+  return { message: 'Fasilitas berhasil ditambahkan.', item: toFaskesView(newItem) };
 }
 
 /**
@@ -55,7 +74,8 @@ export async function createFacility(data) {
  */
 export async function updateFacility(id, data) {
   await simulateDelay(200);
-  patchFaskes(id, { stok: Number(data.stok), terakhir_update: new Date().toISOString() });
+  const kapasitas = Number(data.kapasitas_tersedia ?? data.stok ?? 0);
+  patchFaskes(id, { kapasitas_tersedia: kapasitas, stok: kapasitas, updated_at: new Date().toISOString(), terakhir_update: new Date().toISOString() });
   return { message: 'Kapasitas berhasil diperbarui.', id };
 }
 
@@ -65,7 +85,7 @@ export async function updateFacility(id, data) {
  */
 export async function getFacilitySummary() {
   await simulateDelay();
-  const items = getFaskesState();
+  const items = getFaskesState().map(toFaskesView);
   // Kelompokkan per institusi
   const grouped = items.reduce((acc, item) => {
     const key = item.institusi || 'Umum';
