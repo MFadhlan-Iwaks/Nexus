@@ -61,16 +61,17 @@ export default function UserProfileDropdown({
 
   const profile = useMemo(() => {
     const raw = storedUser || {};
+    const dp = defaultProfile || {};
 
     return {
-      name: raw.nama_lengkap || raw.nama || raw.name || defaultProfile.name,
-      role: raw.role || defaultProfile.role,
-      id: raw.id_pengguna || raw.id || raw.uuid || defaultProfile.id,
-      phone: raw.no_hp || raw.phone || raw.telepon || defaultProfile.phone,
-      email: raw.email || defaultProfile.email,
-      address: raw.alamat || raw.address || defaultProfile.address,
-      instansi: raw.instansi || raw.lembaga || defaultProfile.instansi,
-      unit: raw.regu || raw.unit || defaultProfile.unit
+      name: raw.nama_lengkap || raw.nama || raw.name || dp.nama || dp.name || 'Pengguna',
+      role: raw.role || dp.role || '-',
+      id: raw.id_pengguna || raw.id || raw.uuid || dp.id || '-',
+      phone: raw.no_hp || raw.phone || raw.telepon || dp.no_hp || dp.phone || '-',
+      email: raw.email || dp.email || '-',
+      address: raw.alamat || raw.address || dp.alamat || dp.address || '-',
+      instansi: raw.instansi || raw.lembaga || dp.instansi || '-',
+      unit: raw.regu || raw.unit || dp.unit || null,
     };
   }, [storedUser, defaultProfile]);
 

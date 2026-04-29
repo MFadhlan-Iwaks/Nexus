@@ -21,11 +21,14 @@ export default function ResourceTable({
   const getCategoryClass = (category) => {
     if (category?.includes('IGD')) return 'bg-blue-100 text-blue-700 border-blue-200';
     if (category?.includes('Rawat')) return 'bg-violet-100 text-violet-700 border-violet-200';
-    if (category?.includes('Darah')) return 'bg-rose-100 text-rose-700 border-rose-200';
+    if (category?.includes('ICU')) return 'bg-red-100 text-red-700 border-red-200';
+    if (category?.includes('Isolasi')) return 'bg-teal-100 text-teal-700 border-teal-200';
+    if (category?.includes('Observasi')) return 'bg-sky-100 text-sky-700 border-sky-200';
+    if (category?.includes('Darurat')) return 'bg-blue-100 text-blue-700 border-blue-200';
     if (category?.includes('Pangan')) return 'bg-lime-100 text-lime-700 border-lime-200';
     if (category?.includes('Sandang')) return 'bg-cyan-100 text-cyan-700 border-cyan-200';
     if (category?.includes('Peralatan')) return 'bg-orange-100 text-orange-700 border-orange-200';
-    if (category?.includes('Obat')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (category?.includes('Obat') || category?.includes('Medis')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     return 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
@@ -44,43 +47,53 @@ export default function ResourceTable({
     return () => clearTimeout(timer);
   }, [highlightedFaskesId, highlightedLogisticsId, isFaskes, isLogistik]);
 
+  // Status class berbeda: logistik vs faskes
   const getStatusClass = (status) => {
+    // Faskes: Tersedia | Hampir Penuh | Penuh
+    if (status === 'Penuh') return 'bg-red-100 text-red-700';
+    if (status === 'Hampir Penuh') return 'bg-amber-100 text-amber-700';
+    if (status === 'Tersedia') return 'bg-emerald-100 text-emerald-700';
+    // Logistik: Aman | Menipis | Habis
     if (status === 'Habis') return 'bg-red-100 text-red-700';
     if (status === 'Menipis') return 'bg-amber-100 text-amber-700';
-    return 'bg-emerald-100 text-emerald-700';
+    if (status === 'Aman') return 'bg-emerald-100 text-emerald-700';
+    return 'bg-slate-100 text-slate-600';
   };
+
+  // Label kolom 1 (hijau): Aman / Tersedia
+  // Label kolom 2 (kuning): Menipis / Hampir Penuh
+  // Label kolom 3 (merah): Habis / Penuh
+  const statusLabels = isFaskes
+    ? { ok: 'Tersedia', warn: 'Hampir Penuh', danger: 'Penuh' }
+    : { ok: 'Aman', warn: 'Menipis', danger: 'Habis' };
 
   const resourceSummary = useMemo(() => {
     return resourceItems.reduce(
       (acc, item) => {
         acc.total += 1;
-        if (item.status === 'Aman') acc.aman += 1;
-        if (item.status === 'Menipis') acc.menipis += 1;
-        if (item.status === 'Habis') acc.habis += 1;
+        if (item.status === statusLabels.ok) acc.aman += 1;
+        if (item.status === statusLabels.warn) acc.menipis += 1;
+        if (item.status === statusLabels.danger) acc.habis += 1;
         return acc;
       },
       { total: 0, aman: 0, menipis: 0, habis: 0 }
     );
-  }, [resourceItems]);
+  }, [resourceItems, statusLabels.ok, statusLabels.warn, statusLabels.danger]);
 
   const filteredResources = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-
     const filtered = resourceItems.filter((item) => {
-      const matchesSearch =
-        query.length === 0 ||
-        item.nama.toLowerCase().includes(query) ||
-        item.kategori.toLowerCase().includes(query);
+      const nama = (item.nama || '').toLowerCase();
+      const kategori = (item.kategori || '').toLowerCase();
+      const matchesSearch = query.length === 0 || nama.includes(query) || kategori.includes(query);
       const matchesStatus = statusFilter === 'Semua' || item.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-
-    if ((isFaskes || isLogistik) && resourceSortMode === 'kapasitas-rendah') {
-      return [...filtered].sort((a, b) => a.stok - b.stok);
+    if (resourceSortMode === 'kapasitas-rendah') {
+      return [...filtered].sort((a, b) => (a.stok ?? 0) - (b.stok ?? 0));
     }
-
     return filtered;
-  }, [resourceItems, searchQuery, statusFilter, isFaskes, isLogistik, resourceSortMode]);
+  }, [resourceItems, searchQuery, statusFilter, resourceSortMode]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in duration-300">
@@ -131,21 +144,21 @@ export default function ResourceTable({
               <p className="text-xl font-bold text-slate-800 mt-1">{resourceSummary.total}</p>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <p className="text-xs text-emerald-700">Aman</p>
+              <p className="text-xs text-emerald-700">{statusLabels.ok}</p>
               <p className="text-xl font-bold text-emerald-700 mt-1 flex items-center gap-2"><ShieldCheck size={18} /> {resourceSummary.aman}</p>
             </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs text-amber-700">Menipis</p>
+              <p className="text-xs text-amber-700">{statusLabels.warn}</p>
               <p className="text-xl font-bold text-amber-700 mt-1 flex items-center gap-2"><AlertTriangle size={18} /> {resourceSummary.menipis}</p>
             </div>
             <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-              <p className="text-xs text-red-700">Habis</p>
+              <p className="text-xs text-red-700">{statusLabels.danger}</p>
               <p className="text-xl font-bold text-red-700 mt-1 flex items-center gap-2"><OctagonX size={18} /> {resourceSummary.habis}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {['Semua', 'Aman', 'Menipis', 'Habis'].map((status) => (
+            {['Semua', statusLabels.ok, statusLabels.warn, statusLabels.danger].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -192,8 +205,9 @@ export default function ResourceTable({
       <table className="w-full text-left min-w-180">
         <thead>
           <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-            <th className="p-4 font-semibold">Nama / Kategori</th>
-            <th className="p-4 font-semibold">Sisa Kapasitas/Stok</th>
+            <th className="p-4 font-semibold">{isFaskes ? 'Nama Fasilitas' : 'Nama / Kategori'}</th>
+            {isFaskes && <th className="p-4 font-semibold">Kategori Layanan</th>}
+            <th className="p-4 font-semibold">{isFaskes ? 'Sisa Kapasitas' : 'Sisa Stok'}</th>
             {(isLogistik || isFaskes) && <th className="p-4 font-semibold">Status</th>}
             <th className="p-4 font-semibold text-right">Aksi</th>
           </tr>
@@ -209,11 +223,22 @@ export default function ResourceTable({
               >
                 <td className="p-4 font-bold text-slate-800">
                   {item.nama}
-                  <br />
-                  <span className={`inline-flex mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getCategoryClass(item.kategori)}`}>
-                    {item.kategori}
-                  </span>
+                  {!isFaskes && (
+                    <>
+                      <br />
+                      <span className={`inline-flex mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getCategoryClass(item.kategori)}`}>
+                        {item.kategori}
+                      </span>
+                    </>
+                  )}
                 </td>
+                {isFaskes && (
+                  <td className="p-4">
+                    <span className={`inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getCategoryClass(item.kategori)}`}>
+                      {item.kategori}
+                    </span>
+                  </td>
+                )}
                 <td className={`p-4 font-bold text-lg ${item.stok <= 0 ? 'text-red-600' : 'text-slate-800'}`}>
                   {item.stok} <span className="text-sm font-normal text-slate-500">{item.unit}</span>
                 </td>
@@ -236,7 +261,7 @@ export default function ResourceTable({
 
           {(isLogistik || isFaskes) && filteredResources.length === 0 && (
             <tr>
-              <td colSpan={4} className="p-8 text-center">
+              <td colSpan={isFaskes ? 5 : 4} className="p-8 text-center">
                 <p className="text-sm font-semibold text-slate-700">
                   {isFaskes ? 'Data faskes tidak ditemukan' : 'Data logistik tidak ditemukan'}
                 </p>

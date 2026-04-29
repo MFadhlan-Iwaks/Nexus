@@ -45,7 +45,9 @@ export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 flex items-start gap-3">
             <Sparkles size={16} className="text-blue-600 mt-0.5" />
             <p className="text-xs text-blue-800">
-              Gunakan nama item yang spesifik dan satuan konsisten agar status stok otomatis terbaca dengan benar.
+              {activeTab === 'faskes'
+                ? 'Masukkan hanya kapasitas layanan kesehatan. Stok barang medis dikelola di menu Logistik.'
+                : 'Gunakan nama item yang spesifik dan satuan konsisten agar status stok otomatis terbaca dengan benar.'}
             </p>
           </div>
           
@@ -57,7 +59,7 @@ export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
               type="text" 
               name="nama"
               required
-              placeholder={activeTab === 'faskes' ? "Cth: IGD, Kamar Rawat Inap Lt.2, Bank Darah" : "Cth: Beras Premium 5kg"}
+              placeholder={activeTab === 'faskes' ? "Cth: RSUD dr. Soekardjo (IGD)" : "Cth: Kantong Darah O+, Masker N95"}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
             />
           </div>
@@ -72,8 +74,12 @@ export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
                   <>
                     <option value="">-- Pilih Kategori Faskes --</option>
                     <option value="Ruang Darurat (IGD)">Ruang Darurat (IGD)</option>
-                    <option value="Kamar Rawat Inap">Kamar Rawat Inap</option>
-                    <option value="Stok Kantong Darah">Stok Kantong Darah</option>
+                    <option value="Rawat Inap">Rawat Inap</option>
+                    <option value="ICU">ICU</option>
+                    <option value="Ruang Isolasi">Ruang Isolasi</option>
+                    <option value="Ruang Observasi">Ruang Observasi</option>
+                    <option value="Ruang Darurat">Ruang Darurat</option>
+                    <option value="Kamar Perawatan">Kamar Perawatan</option>
                   </>
                 ) : (
                   <>
@@ -81,7 +87,7 @@ export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
                     <option value="Logistik Pangan">Logistik Pangan (Makanan/Minuman)</option>
                     <option value="Sandang & Selimut">Sandang & Selimut</option>
                     <option value="Peralatan Darurat">Peralatan Darurat (Tenda, Perahu)</option>
-                    <option value="Obat-obatan">Obat-obatan</option>
+                    <option value="Medis">Medis (Darah, Obat, Masker, APD, Infus, Oksigen)</option>
                   </>
                 )}
               </select>
@@ -95,7 +101,7 @@ export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
                 type="text" 
                 name="unit"
                 required
-                placeholder={activeTab === 'faskes' ? 'Cth: Bed, Kantong' : 'Cth: Kg, Box, Unit'}
+                placeholder={activeTab === 'faskes' ? 'Cth: Bed, Ruang' : 'Cth: Kg, Box, Kantong'}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
               />
             </div>
@@ -104,14 +110,16 @@ export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">
-                Kapasitas / Stok Awal <span className="text-red-500">*</span>
+                {activeTab === 'faskes' ? 'Kapasitas Tersedia' : 'Stok Awal'} <span className="text-red-500">*</span>
               </label>
               <input name="stok" type="number" required min="0" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs text-slate-500 mb-1 flex items-center gap-1"><ClipboardList size={13} /> Catatan Input</p>
               <p className="text-xs text-slate-700 leading-relaxed">
-                Data yang disimpan akan langsung masuk daftar logistik dan tercatat pada riwayat pembaruan stok.
+                {activeTab === 'faskes'
+                  ? 'Data yang disimpan akan masuk daftar kapasitas layanan faskes dan memakai status Tersedia, Hampir Penuh, atau Penuh.'
+                  : 'Data yang disimpan akan langsung masuk daftar logistik dan tercatat pada riwayat pembaruan stok.'}
               </p>
             </div>
           </div>

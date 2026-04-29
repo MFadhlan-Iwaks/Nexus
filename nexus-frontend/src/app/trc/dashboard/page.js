@@ -1,356 +1,158 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Radio, Loader2 } from 'lucide-react'; 
+// src/app/trc/dashboard/page.js
+// TRC: validasi dan update progres menulis ke shared store → admin ikut berubah
+
+import { useState, useCallback } from 'react';
+import { Radio, ClipboardList } from 'lucide-react';
 import TRCNavbar from '@/components/trc/TRCNavbar';
 import TaskCard from '@/components/trc/TaskCard';
 import ValidationModal from '@/components/trc/ValidationModal';
 import TaskDetailModal from '@/components/trc/TaskDetailModal';
-import UpdateProgressModal from '@/components/trc/UpdateProgressModal'; 
+import UpdateProgressModal from '@/components/trc/UpdateProgressModal';
+import { LoadingState, ErrorState, EmptyState } from '@/components/common/PageStates';
+import { useAsync } from '@/hooks/useAsync';
+import { getReports } from '@/services/reportService';
+import { mockTrcProfile } from '@/data/mockData';
 
-function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-  const toRad = (value) => (value * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+// Mapper: format dari mockReports → format TaskCard
+function mapReportToTask(report) {
+  const m = report?.masyarakat || {};
+  const t = report?.trc || {};
+  return {
+    id: report?.id || '-',
+    status: report?.status === 'menunggu_admin' || report?.status === 'diproses'
+      ? (t.status_validasi ? 'penanganan' : 'menunggu')
+      : report?.status === 'selesai' ? 'selesai' : 'menunggu',
+    kategori: m.kategori || 'Tidak Diketahui',
+    judul: `${m.kategori || 'Insiden'} — ${report?.id || ''}`,
+    lokasi: `${m.latitude?.toFixed(4) ?? '-'}, ${m.longitude?.toFixed(4) ?? '-'}`,
+    koordinat: `${m.latitude ?? '-'}, ${m.longitude ?? '-'}`,
+    deskripsi: m.deskripsi || '-',
+    waktu: m.waktu_lapor ? new Date(m.waktu_lapor).toLocaleString('id-ID') : '-',
+    pelapor: m.nama || 'Anonim',
+    foto: m.foto || null,
+    trc: t,
+    jarak: '~1-3 km',
+  };
 }
 
 export default function TRCDashboard() {
   const [activeTab, setActiveTab] = useState('baru');
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isLiveTrackingOn, setIsLiveTrackingOn] = useState(false);
-  const [trcCoords, setTrcCoords] = useState(null);
-  const [trackingAccuracy, setTrackingAccuracy] = useState(null);
-  const [trackingUpdatedAt, setTrackingUpdatedAt] = useState(null);
-  const [trackingError, setTrackingError] = useState('');
-  const [isSubmittingValidation, setIsSubmittingValidation] = useState(false);
-  const [isSubmittingProgress, setIsSubmittingProgress] = useState(false);
-  
   const [selectedTask, setSelectedTask] = useState(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
-  const normalizeTaskStatus = (rawStatus) => {
-    const statusLower = String(rawStatus || '').trim().toLowerCase();
+  // State laporan lokal agar UI update langsung setelah aksi TRC
+  const [localTasks, setLocalTasks] = useState(null);
 
-    if (statusLower === 'menunggu') return 'menunggu';
-    if (statusLower === 'diproses' || statusLower === 'penanganan' || statusLower === 'dalam penanganan') return 'penanganan';
-    if (statusLower === 'ditolak' || statusLower === 'ditolah') return 'ditolak';
-    return 'selesai';
-  };
-
-  useEffect(() => {
-    if (!isLiveTrackingOn) {
-      setTrcCoords(null);
-      setTrackingAccuracy(null);
-      setTrackingUpdatedAt(null);
-      setTrackingError('');
-      return;
-    }
-
-    if (!navigator.geolocation) {
-      setTrackingError('Browser tidak mendukung GPS/geolocation.');
-      setIsLiveTrackingOn(false);
-      return;
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setTrackingError('');
-        setTrcCoords({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setTrackingAccuracy(Math.round(position.coords.accuracy));
-        setTrackingUpdatedAt(new Date());
-      },
-      (error) => {
-        if (error.code === 1) {
-          setTrackingError('Izin lokasi ditolak. Aktifkan permission lokasi untuk validasi.');
-        } else {
-          setTrackingError('Gagal mengambil lokasi real-time.');
-        }
-        setTrcCoords(null);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-    };
-  }, [isLiveTrackingOn]);
-
-  const fetchSemuaLaporan = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/laporan/all', {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || 'Gagal mengambil data laporan');
-      }
-
-      const formattedTasks = result.data.map((laporan) => {
-        const mappedStatus = normalizeTaskStatus(laporan.status);
-        const lat = Number(laporan.latitude);
-        const lng = Number(laporan.longitude);
-
-        return {
-          id: laporan.id_laporan,
-          rawStatus: laporan.status,
-          status: mappedStatus,
-          kategori: laporan.kategori_bencana,
-          judul: `Laporan ${laporan.kategori_bencana}`,
-          latitude: Number.isFinite(lat) ? lat : null,
-          longitude: Number.isFinite(lng) ? lng : null,
-          deskripsi: laporan.deskripsi_kejadian,
-          waktu: new Date(laporan.waktu_laporan).toLocaleString('id-ID'),
-          pelapor: `${laporan.nama_lengkap} (${String(laporan.no_hp || '').slice(0, 4)}***)`,
-          fasePenanganan: laporan.fase_penanganan || '-',
-          jarak: 'N/A',
-          lokasi: Number.isFinite(lat) && Number.isFinite(lng) ? `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}` : 'Lokasi tidak tersedia',
-          koordinat: Number.isFinite(lat) && Number.isFinite(lng) ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : '-',
-          mapsUrl: Number.isFinite(lat) && Number.isFinite(lng) ? `https://www.google.com/maps?q=${lat},${lng}` : null,
-          foto: laporan.bukti_visual ? `http://localhost:5000/uploads/${encodeURIComponent(laporan.bukti_visual)}` : null,
-          fotoProgress: laporan.foto_progress ? `http://localhost:5000/uploads/${laporan.foto_progress}` : null
-        };
-      });
-
-      setTasks(formattedTasks);
-    } catch (error) {
-      console.error('Gagal memuat laporan:', error);
-      alert('Gagal memuat data laporan masyarakat.');
-    } finally {
-      setLoading(false);
-    }
+  const { loading, error, refetch } = useAsync(async () => {
+    const reports = await getReports();
+    setLocalTasks(reports.map(mapReportToTask));
   }, []);
 
-  useEffect(() => {
-    fetchSemuaLaporan();
-  }, [fetchSemuaLaporan]);
+  const tasks = localTasks || [];
 
-  const tasksWithDistance = useMemo(() => {
-    return tasks.map((task) => {
-      const hasTaskCoords = Number.isFinite(task.latitude) && Number.isFinite(task.longitude);
-      const hasTrcCoords = Number.isFinite(trcCoords?.latitude) && Number.isFinite(trcCoords?.longitude);
+  const laporanBaruCount = tasks.filter((t) => t.status === 'menunggu').length;
+  const tugasAktifCount = tasks.filter((t) => t.status === 'penanganan').length;
 
-      const jarakKm = hasTaskCoords && hasTrcCoords
-        ? calculateDistanceKm(trcCoords.latitude, trcCoords.longitude, task.latitude, task.longitude)
-        : null;
+  const filteredTasks = tasks.filter((t) =>
+    activeTab === 'baru' ? t.status === 'menunggu' : t.status === 'penanganan'
+  );
 
-      return {
-        ...task,
-        lokasi: hasTaskCoords ? `Lat ${task.latitude.toFixed(5)}, Lng ${task.longitude.toFixed(5)}` : 'Lokasi tidak tersedia',
-        koordinat: hasTaskCoords ? `${task.latitude.toFixed(6)}, ${task.longitude.toFixed(6)}` : '-',
-        mapsUrl: hasTaskCoords ? `https://www.google.com/maps?q=${task.latitude},${task.longitude}` : null,
-        jarak: Number.isFinite(jarakKm) ? `${jarakKm.toFixed(1)} km` : 'N/A'
-      };
-    });
-  }, [tasks, trcCoords]);
+  // Callback setelah validasi → update status task di UI
+  const handleValidationSuccess = useCallback(({ id, status_validasi }) => {
+    setLocalTasks((prev) =>
+      prev?.map((t) =>
+        t.id !== id ? t : {
+          ...t,
+          status: status_validasi === 'valid' ? 'penanganan' : 'selesai',
+          trc: { ...t.trc, status_validasi },
+        }
+      )
+    );
+  }, []);
 
-  const ensureTrackingForValidation = () => {
-    if (!isLiveTrackingOn || !trcCoords) {
-      alert('Validasi hanya bisa dilakukan saat Live Tracking ON dan GPS aktif.');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmitValidation = async ({ taskId, status, skala, pesanSituasi, fotoFile }) => {
-    if (!ensureTrackingForValidation()) return;
-
-    setIsSubmittingValidation(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-
-      if (status === 'hoax') {
-        formData.append('status', 'Ditolak');
-        formData.append('fase_penanganan', 'Laporan tidak valid (hoax)');
-      } else {
-        formData.append('status', 'Diproses');
-        formData.append('fase_penanganan', `Validasi TRC (${skala})`);
-      }
-
-      if (pesanSituasi) {
-        formData.append('pesan_situasi', pesanSituasi);
-      }
-      if (fotoFile) {
-        formData.append('foto_progress', fotoFile);
-      }
-
-      const res = await fetch(`http://localhost:5000/api/laporan/update/${taskId}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
-
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.error || 'Gagal menyimpan validasi');
-      }
-
-      await fetchSemuaLaporan();
-      alert('Validasi laporan berhasil dikirim.');
-      setIsValidationModalOpen(false);
-    } catch (error) {
-      alert(error.message || 'Validasi gagal dikirim.');
-    } finally {
-      setIsSubmittingValidation(false);
-    }
-  };
-
-  const handleSubmitProgress = async ({ taskId, fase, pesanSituasi, fotoFile }) => {
-    setIsSubmittingProgress(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      const finalStatus = fase === 'selesai' ? 'Selesai' : 'Diproses';
-
-      formData.append('status', finalStatus);
-      formData.append('fase_penanganan', fase);
-      if (pesanSituasi) {
-        formData.append('pesan_situasi', pesanSituasi);
-      }
-      if (fotoFile) {
-        formData.append('foto_progress', fotoFile);
-      }
-
-      const res = await fetch(`http://localhost:5000/api/laporan/update/${taskId}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
-
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.error || 'Gagal memperbarui progres');
-      }
-
-      await fetchSemuaLaporan();
-      alert('Progres penanganan berhasil diperbarui.');
-      setIsUpdateModalOpen(false);
-    } catch (error) {
-      alert(error.message || 'Gagal memperbarui progres.');
-    } finally {
-      setIsSubmittingProgress(false);
-    }
-  };
-
-  // Filter tugas berdasarkan tab yang aktif
-  const filteredTasks = tasksWithDistance.filter((t) => {
-    if (activeTab === 'baru') return t.status === 'menunggu';
-    if (activeTab === 'aktif') return t.status === 'penanganan';
-    return t.status === 'ditolak';
-  });
-  
-  // Hitung jumlah notifikasi di tab
-  const countBaru = tasksWithDistance.filter(t => t.status === 'menunggu').length;
-  const countAktif = tasksWithDistance.filter(t => t.status === 'penanganan').length;
-  const countDitolak = tasksWithDistance.filter(t => t.status === 'ditolak').length;
+  // Callback setelah update progres → update fase di UI
+  const handleProgressSuccess = useCallback(({ id, fase_penanganan }) => {
+    setLocalTasks((prev) =>
+      prev?.map((t) =>
+        t.id !== id ? t : { ...t, trc: { ...t.trc, fase_penanganan } }
+      )
+    );
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
-      <TRCNavbar />
+      <TRCNavbar profile={mockTrcProfile} />
 
       <main className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-4 py-6">
-        
+
+        {/* Header Operasi */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Operasi Lapangan</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${isLiveTrackingOn ? 'text-emerald-600 bg-emerald-100' : 'text-slate-500 bg-slate-200'}`}>
-                <Radio size={12} className={isLiveTrackingOn ? 'animate-pulse' : ''} />
-                {isLiveTrackingOn ? 'Live Tracking Aktif' : 'Live Tracking Nonaktif'}
+            <h1 className="text-2xl font-bold text-slate-900">Operasi Lapangan</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
+                <Radio size={12} className="animate-pulse" /> Live Tracking Aktif
               </span>
-              <p className="text-slate-500 text-sm">
-                {trcCoords
-                  ? `Lokasi Anda: ${trcCoords.latitude.toFixed(5)}, ${trcCoords.longitude.toFixed(5)} (±${trackingAccuracy || '-'}m)`
-                  : 'Lokasi Anda: belum terdeteksi'}
-              </p>
+              <p className="text-slate-500 text-sm">Lokasi: {mockTrcProfile.lokasi || 'Kec. Tawang'}</p>
             </div>
-            {trackingUpdatedAt && (
-              <p className="text-[11px] text-slate-400 mt-1">
-                Update terakhir: {trackingUpdatedAt.toLocaleTimeString('id-ID')}
-              </p>
-            )}
-            {trackingError && <p className="text-xs text-red-600 mt-1">{trackingError}</p>}
           </div>
-
           <button
-            type="button"
-            onClick={() => setIsLiveTrackingOn((prev) => !prev)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${isLiveTrackingOn ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+            onClick={refetch}
+            className="text-xs font-bold text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
           >
-            {isLiveTrackingOn ? 'Matikan Live Tracking' : 'Nyalakan Live Tracking'}
+            ↻ Refresh
           </button>
         </div>
 
         {/* Tab Navigasi */}
         <div className="flex border-b border-slate-200 mb-6">
-          <button 
-            onClick={() => setActiveTab('baru')} 
-            className={`pb-3 px-4 font-bold text-sm transition-colors relative ${activeTab === 'baru' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Laporan Baru (Validasi)
-            {countBaru > 0 && <span className="ml-2 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-[10px]">{countBaru}</span>}
-            {activeTab === 'baru' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-900 rounded-t-full"></div>}
-          </button>
-          <button 
-            onClick={() => setActiveTab('aktif')} 
-            className={`pb-3 px-4 font-bold text-sm transition-colors relative ${activeTab === 'aktif' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Tugas Aktif (Penanganan)
-            {countAktif > 0 && <span className="ml-2 bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-[10px]">{countAktif}</span>}
-            {activeTab === 'aktif' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-          </button>
-          <button 
-            onClick={() => setActiveTab('ditolak')} 
-            className={`pb-3 px-4 font-bold text-sm transition-colors relative ${activeTab === 'ditolak' ? 'text-red-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Laporan Ditolak
-            {countDitolak > 0 && <span className="ml-2 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-[10px]">{countDitolak}</span>}
-            {activeTab === 'ditolak' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 rounded-t-full"></div>}
-          </button>
+          {[
+            { id: 'baru', label: 'Laporan Baru (Validasi)', count: laporanBaruCount, activeClass: 'text-slate-900', barClass: 'bg-slate-900' },
+            { id: 'aktif', label: 'Tugas Aktif (Penanganan)', count: tugasAktifCount, activeClass: 'text-blue-600', barClass: 'bg-blue-600' },
+          ].map(({ id, label, count, activeClass, barClass }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`pb-3 px-4 font-bold text-sm transition-colors relative ${activeTab === id ? activeClass : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {label}
+              <span className="ml-2 bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-[10px]">
+                {count}
+              </span>
+              {activeTab === id && (
+                <div className={`absolute bottom-0 left-0 w-full h-0.5 ${barClass} rounded-t-full`} />
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Konten Daftar Laporan */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-             <Loader2 size={32} className="animate-spin text-red-600 mb-2" />
-             <p>Mengambil data dari pusat komando...</p>
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-10 bg-white border border-slate-200 rounded-xl shadow-sm">
-             <p className="text-slate-500">Tidak ada tugas di kategori ini.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+        {/* Konten */}
+        {loading && <LoadingState message="Memuat laporan lapangan..." />}
+        {error && <ErrorState message={error} onRetry={refetch} />}
+
+        {!loading && !error && filteredTasks.length === 0 && (
+          <EmptyState
+            icon={ClipboardList}
+            title={activeTab === 'baru' ? 'Tidak Ada Laporan Baru' : 'Tidak Ada Tugas Aktif'}
+            description={activeTab === 'baru'
+              ? 'Semua laporan masuk sudah divalidasi.'
+              : 'Belum ada tugas aktif saat ini.'}
+          />
+        )}
+
+        {!loading && !error && filteredTasks.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 animate-in fade-in duration-300">
             {filteredTasks.map((task) => (
-              <TaskCard 
-                key={task.id} 
-                data={task} 
-                onValidate={(t) => {
-                  if (!ensureTrackingForValidation()) return;
-                  setSelectedTask(t);
-                  setIsValidationModalOpen(true);
-                }}
+              <TaskCard
+                key={task.id}
+                data={task}
+                onValidate={(t) => { setSelectedTask(t); setIsValidationModalOpen(true); }}
                 onUpdate={(t) => { setSelectedTask(t); setIsUpdateModalOpen(true); }}
-                onDetail={(t) => { setSelectedTask(t); setIsDetailModalOpen(true); }} 
+                onDetail={(t) => { setSelectedTask(t); setIsDetailModalOpen(true); }}
               />
             ))}
           </div>
@@ -360,35 +162,26 @@ export default function TRCDashboard() {
       {/* Modals */}
       <ValidationModal
         isOpen={isValidationModalOpen}
-        onClose={() => setIsValidationModalOpen(false)}
+        onClose={() => { setIsValidationModalOpen(false); setSelectedTask(null); }}
         task={selectedTask}
-        onSubmit={handleSubmitValidation}
-        isSubmitting={isSubmittingValidation}
+        onSuccess={handleValidationSuccess}
       />
       <TaskDetailModal
         isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
+        onClose={() => { setIsDetailModalOpen(false); setSelectedTask(null); }}
         task={selectedTask}
         onOpenValidation={(t) => {
-          if (!ensureTrackingForValidation()) return;
           setIsDetailModalOpen(false);
           setSelectedTask(t);
           setIsValidationModalOpen(true);
         }}
-        onOpenUpdate={(t) => {
-          setIsDetailModalOpen(false);
-          setSelectedTask(t);
-          setIsUpdateModalOpen(true);
-        }}
       />
       <UpdateProgressModal
         isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
+        onClose={() => { setIsUpdateModalOpen(false); setSelectedTask(null); }}
         task={selectedTask}
-        onSubmit={handleSubmitProgress}
-        isSubmitting={isSubmittingProgress}
+        onSuccess={handleProgressSuccess}
       />
-      
     </div>
   );
 }
