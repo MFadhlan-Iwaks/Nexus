@@ -24,5 +24,8 @@ const upload = multer({ storage: storage });
 
 router.post('/tambah', auth, upload.single('bukti_visual'), laporanController.buatLaporan);
 router.get('/riwayat', auth, laporanController.getRiwayatLaporan);
+router.get('/all', auth, laporanController.getAllLaporan);
+router.patch('/update/:id_laporan', auth, upload.single('foto_progress'), laporanController.updateProgressLaporan);
+router.patch('/validasi/:id_laporan', auth, laporanController.validasiLaporan);
 
 module.exports = router;

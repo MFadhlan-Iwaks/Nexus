@@ -1,7 +1,11 @@
 import { X, MapPin, Clock, User, ShieldCheck, AlignLeft, Layers, Navigation } from 'lucide-react';
 
-export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidation }) {
+export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidation, onOpenUpdate }) {
   if (!isOpen || !task) return null;
+
+  const isMenunggu = task.status === 'menunggu';
+  const isPenanganan = task.status === 'penanganan';
+  const displayId = `LAP-${String(task.id).padStart(6, '0')}`;
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -11,7 +15,7 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
           <div>
             <h3 className="font-bold text-lg text-slate-900">Detail Laporan Darurat</h3>
             <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full uppercase mt-1 inline-block">
-              ID: {task.id}
+              ID: {displayId}
             </span>
           </div>
           <button onClick={onClose} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"><X size={20}/></button>
@@ -68,7 +72,16 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Titik Geotagging (GPS):</p>
                     <p className="text-xs font-mono text-slate-700">{task.koordinat}</p>
                   </div>
-                  <button className="p-2 bg-white rounded-lg shadow-sm text-blue-600 hover:text-blue-800 border border-slate-200" title="Buka di Peta">
+                  <button
+                    className="p-2 bg-white rounded-lg shadow-sm text-blue-600 hover:text-blue-800 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Buka di Peta"
+                    disabled={!task.mapsUrl}
+                    onClick={() => {
+                      if (task.mapsUrl) {
+                        window.open(task.mapsUrl, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                  >
                     <Navigation size={18} />
                   </button>
                 </div>
@@ -88,11 +101,16 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
           <button 
             onClick={() => {
               onClose(); 
-              onOpenValidation(task); 
+              if (isMenunggu) {
+                onOpenValidation(task);
+              } else if (isPenanganan) {
+                onOpenUpdate(task);
+              }
             }}
-            className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 active:scale-95"
+            disabled={!isMenunggu && !isPenanganan}
+            className={`flex-[2] font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 ${isMenunggu || isPenanganan ? 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'}`}
           >
-            <ShieldCheck size={18} /> Lakukan Validasi
+            <ShieldCheck size={18} /> {isMenunggu ? 'Lakukan Validasi' : isPenanganan ? 'Update Progres' : 'Status Final'}
           </button>
         </div>
 
