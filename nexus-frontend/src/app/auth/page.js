@@ -16,17 +16,24 @@ export default function AuthPage() {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden p-8">
           
           <div className="flex bg-slate-100 rounded-lg p-1 mb-8">
-            <button onClick={() => setIsLogin(true)} 
-                    className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${isLogin ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
+            <button
+              onClick={() => setIsLogin(true)} 
+              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${isLogin ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
               Masuk
             </button>
-            <button onClick={() => setIsLogin(false)} 
-                    className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${!isLogin ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
+            <button
+              onClick={() => setIsLogin(false)} 
+              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${!isLogin ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
               Daftar Masyarakat
             </button>
           </div>
 
-          {isLogin ? <LoginForm /> : <RegisterForm />}
+          {isLogin
+            ? <LoginForm />
+            : <RegisterForm onSuccess={() => setIsLogin(true)} />
+          }
 
         </div>
       </div>
