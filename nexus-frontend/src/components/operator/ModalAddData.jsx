@@ -1,83 +1,118 @@
-import { X, Building2, Package, Plus } from 'lucide-react';
+import { X, Building2, Package, Plus, Sparkles, ClipboardList } from 'lucide-react';
 
-export default function ModalAddData({ isOpen, onClose, activeTab }) {
+export default function ModalAddData({ isOpen, onClose, activeTab, onSave }) {
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+    const payload = {
+      nama: formData.get('nama')?.toString().trim() || '',
+      kategori: formData.get('kategori')?.toString().trim() || '',
+      stok: Number(formData.get('stok') || 0),
+      unit: formData.get('unit')?.toString().trim() || '',
+    };
+
+    if ((activeTab === 'logistik' || activeTab === 'faskes') && onSave) {
+      onSave(payload);
+      return;
+    }
+
     alert(`Data ${activeTab === 'faskes' ? 'Fasilitas Kesehatan' : 'Logistik'} baru berhasil ditambahkan!`);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-100 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
         
-        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-slate-800 font-bold">
-            {activeTab === 'faskes' ? <Building2 size={20} className="text-blue-600" /> : <Package size={20} className="text-blue-600" />}
-            Tambah Data {activeTab === 'faskes' ? 'Faskes' : 'Logistik'} Baru
+        <div className="px-6 py-5 border-b border-slate-200 flex items-start justify-between bg-linear-to-r from-slate-900 via-slate-800 to-blue-900 text-white">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-blue-200">Input Data Instansi</p>
+            <div className="flex items-center gap-2 font-bold mt-1">
+              {activeTab === 'faskes' ? <Building2 size={20} className="text-blue-300" /> : <Package size={20} className="text-blue-300" />}
+              Tambah Data {activeTab === 'faskes' ? 'Faskes' : 'Logistik'} Baru
+            </div>
+            <p className="text-xs text-slate-200 mt-1">Lengkapi data penting agar sinkronisasi pusat tetap akurat.</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors">
             <X size={20} />
           </button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 flex items-start gap-3">
+            <Sparkles size={16} className="text-blue-600 mt-0.5" />
+            <p className="text-xs text-blue-800">
+              Gunakan nama item yang spesifik dan satuan konsisten agar status stok otomatis terbaca dengan benar.
+            </p>
+          </div>
           
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">
-              Nama {activeTab === 'faskes' ? 'Fasilitas / Ruangan' : 'Barang / Bantuan'} <span className="text-red-500">*</span>
+              {activeTab === 'faskes' ? 'Nama Ruangan / Unit' : 'Nama Barang / Bantuan'} <span className="text-red-500">*</span>
             </label>
             <input 
               type="text" 
+              name="nama"
               required
-              placeholder={activeTab === 'faskes' ? "Cth: RSUD dr. Soekardjo (IGD)" : "Cth: Beras Premium 5kg"}
+              placeholder={activeTab === 'faskes' ? "Cth: IGD, Kamar Rawat Inap Lt.2, Bank Darah" : "Cth: Beras Premium 5kg"}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">
-              Kategori <span className="text-red-500">*</span>
-            </label>
-            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
-              {activeTab === 'faskes' ? (
-                <>
-                  <option value="">-- Pilih Kategori Faskes --</option>
-                  <option value="igd">Ruang Darurat (IGD)</option>
-                  <option value="rawat_inap">Kamar Rawat Inap</option>
-                  <option value="kantong_darah">Stok Kantong Darah</option>
-                </>
-              ) : (
-                <>
-                  <option value="">-- Pilih Kategori Logistik --</option>
-                  <option value="pangan">Logistik Pangan (Makanan/Minuman)</option>
-                  <option value="sandang">Sandang & Selimut</option>
-                  <option value="peralatan">Peralatan Darurat (Tenda, Perahu)</option>
-                  <option value="obat">Obat-obatan</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">
-                Kapasitas / Stok Awal <span className="text-red-500">*</span>
+                Kategori <span className="text-red-500">*</span>
               </label>
-              <input type="number" required min="0" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
+              <select name="kategori" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" required>
+                {activeTab === 'faskes' ? (
+                  <>
+                    <option value="">-- Pilih Kategori Faskes --</option>
+                    <option value="Ruang Darurat (IGD)">Ruang Darurat (IGD)</option>
+                    <option value="Kamar Rawat Inap">Kamar Rawat Inap</option>
+                    <option value="Stok Kantong Darah">Stok Kantong Darah</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="">-- Pilih Kategori Logistik --</option>
+                    <option value="Logistik Pangan">Logistik Pangan (Makanan/Minuman)</option>
+                    <option value="Sandang & Selimut">Sandang & Selimut</option>
+                    <option value="Peralatan Darurat">Peralatan Darurat (Tenda, Perahu)</option>
+                    <option value="Obat-obatan">Obat-obatan</option>
+                  </>
+                )}
+              </select>
             </div>
+
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">
                 Satuan (Unit) <span className="text-red-500">*</span>
               </label>
               <input 
                 type="text" 
+                name="unit"
                 required
-                placeholder={activeTab === 'faskes' ? "Cth: Bed, Kantong" : "Cth: Kg, Box, Unit"}
+                placeholder={activeTab === 'faskes' ? 'Cth: Bed, Kantong' : 'Cth: Kg, Box, Unit'}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">
+                Kapasitas / Stok Awal <span className="text-red-500">*</span>
+              </label>
+              <input name="stok" type="number" required min="0" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-500 mb-1 flex items-center gap-1"><ClipboardList size={13} /> Catatan Input</p>
+              <p className="text-xs text-slate-700 leading-relaxed">
+                Data yang disimpan akan langsung masuk daftar logistik dan tercatat pada riwayat pembaruan stok.
+              </p>
             </div>
           </div>
 

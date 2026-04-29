@@ -2,15 +2,15 @@ import { Menu } from 'lucide-react';
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
 
-export default function Header({ activeTab, onOpenMenu }) {
+export default function Header({ activeTab, onOpenMenu, activeInstitution }) {
   const operatorDefaultProfile = {
     name: 'Angga N.',
     role: 'Operator',
     id: 'OPR-001',
     phone: '0833-4455-6677',
     email: 'operator@nexus.id',
-    instansi: 'Dinas Kesehatan Kota',
-    address: 'Posko Instansi Kota'
+    instansi: activeInstitution || 'Instansi Aktif',
+    address: `Posko ${activeInstitution || 'Instansi Aktif'}`
   };
 
   const operatorNotifications = [
@@ -24,7 +24,7 @@ export default function Header({ activeTab, onOpenMenu }) {
     {
       id: 'opr-2',
       title: 'Update Kapasitas Faskes',
-      message: 'Puskesmas Cihideung memperbarui ketersediaan bed.',
+      message: 'Unit internal memperbarui ketersediaan bed.',
       time: '15 menit lalu',
       read: true
     }
@@ -51,9 +51,12 @@ export default function Header({ activeTab, onOpenMenu }) {
           <Menu size={24} />
         </button>
         
-        <h2 className="font-bold text-base sm:text-lg text-slate-800 transition-all duration-300">
-          {getHeaderTitle()}
-        </h2>
+        <div>
+          <h2 className="font-bold text-base sm:text-lg text-slate-800 transition-all duration-300">
+            {getHeaderTitle()}
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">{activeInstitution || 'Instansi Aktif'}</p>
+        </div>
       </div>
       
       <div className="flex items-center gap-3 sm:gap-5">
