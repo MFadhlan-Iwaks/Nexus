@@ -7,6 +7,17 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+function normalizeUser(user, fallback = {}) {
+  if (!user) return null;
+  return {
+    id: user.id ?? user.id_user ?? fallback.id ?? null,
+    nama: user.nama ?? user.nama_lengkap ?? fallback.nama ?? null,
+    role: user.role ?? fallback.role ?? null,
+    no_hp: user.no_hp ?? fallback.no_hp ?? null,
+    alamat: user.alamat ?? fallback.alamat ?? null,
+  };
+}
+
 /**
  * Login user dengan no_hp dan password.
  * @returns {{ token: string, user: { id, nama, role, no_hp } }}
@@ -19,22 +30,28 @@ export async function login({ no_hp, password }) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Login gagal.');
-  return data; // { token, user }
+  return {
+    token: data.token,
+    user: normalizeUser(data.user, { no_hp }),
+  };
 }
 
 /**
  * Register user baru.
- * @returns {{ message: string, user: { id, nama, role } }}
+ * @returns {{ message: string, user: { id, nama, role, no_hp, alamat } }}
  */
-export async function register({ nama, no_hp, password, role = 'masyarakat' }) {
+export async function register({ nama_lengkap, no_hp, alamat, password }) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nama, no_hp, password, role }),
+    body: JSON.stringify({ nama_lengkap, no_hp, alamat, password }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Registrasi gagal.');
-  return data;
+  return {
+    message: data.message,
+    user: normalizeUser(data.user, { no_hp, alamat, nama: nama_lengkap }),
+  };
 }
 
 /**

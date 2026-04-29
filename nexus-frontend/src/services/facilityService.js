@@ -7,6 +7,9 @@
 // ============================================================
 
 import { getFaskesState, patchFaskes, addFaskes } from '@/data/store';
+import { getToken, getLocalUser } from '@/services/authService';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
@@ -41,8 +44,24 @@ export function getFaskesStatus(kapasitas) {
  * 🟡 Mock — TODO: GET /api/faskes
  */
 export async function getFacilities() {
-  await simulateDelay();
-  return getFaskesState().map(toFaskesView);
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/faskes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil faskes.');
+  return (data.data ?? []).map((item) => toFaskesView({
+    id: item.id_faskes,
+    nama_fasilitas: item.nama_instansi_medis,
+    kategori: item.kategori,
+    kapasitas_tersedia: item.kapasitas_tersedia,
+    satuan: item.unit,
+    lokasi: item.id_instansi,
+    updated_at: item.updated_at,
+    latitude: item.latitude,
+    longitude: item.longitude,
+  }));
 }
 
 /**
@@ -51,19 +70,41 @@ export async function getFacilities() {
  * @param {{ nama, kategori, stok, unit, institusi }} data
  */
 export async function createFacility(data) {
-  await simulateDelay(200);
-  const newItem = {
-    id: `FSK-${Date.now()}`,
-    nama_fasilitas: data.nama_fasilitas ?? data.nama,
-    kategori: data.kategori,
-    kapasitas_total: Number(data.kapasitas_total ?? data.stok ?? 0),
-    kapasitas_tersedia: Number(data.kapasitas_tersedia ?? data.stok ?? 0),
-    satuan: data.satuan ?? data.unit ?? 'Bed',
-    lokasi: data.lokasi ?? data.institusi,
-    updated_at: new Date().toISOString(),
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const user = getLocalUser();
+
+  const res = await fetch(`${API_BASE}/faskes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      id_instansi: user?.id_instansi || null,
+      nama_instansi_medis: data.nama_fasilitas ?? data.nama,
+      kategori: data.kategori,
+      unit: data.satuan ?? data.unit ?? 'Bed',
+      kapasitas_tersedia: Number(data.kapasitas_tersedia ?? data.stok ?? 0),
+    }),
+  });
+
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.message || 'Gagal menambah faskes.');
+
+  const item = result.data;
+  return {
+    message: result.message,
+    item: toFaskesView({
+      id: item.id_faskes,
+      nama_fasilitas: item.nama_instansi_medis,
+      kategori: item.kategori || data.kategori,
+      kapasitas_tersedia: item.kapasitas_tersedia,
+      satuan: item.unit || data.satuan || data.unit || 'Bed',
+      lokasi: item.id_instansi,
+      updated_at: item.updated_at,
+    }),
   };
-  addFaskes(newItem);
-  return { message: 'Fasilitas berhasil ditambahkan.', item: toFaskesView(newItem) };
 }
 
 /**
@@ -73,10 +114,20 @@ export async function createFacility(data) {
  * @param {{ stok: number }} data
  */
 export async function updateFacility(id, data) {
-  await simulateDelay(200);
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
   const kapasitas = Number(data.kapasitas_tersedia ?? data.stok ?? 0);
-  patchFaskes(id, { kapasitas_tersedia: kapasitas, stok: kapasitas, updated_at: new Date().toISOString(), terakhir_update: new Date().toISOString() });
-  return { message: 'Kapasitas berhasil diperbarui.', id };
+  const res = await fetch(`${API_BASE}/faskes/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ kapasitas_tersedia: kapasitas }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.message || 'Gagal memperbarui faskes.');
+  return { message: result.message, id };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { MapPin, Clock, ShieldCheck, Image as ImageIcon, ChevronRight, Navigation, RefreshCw } from 'lucide-react';
 
-export default function TaskCard({ data, onValidate, onDetail, onUpdate }) {
+export default function TaskCard({ data, onValidate, onDetail, onUpdate, canValidate }) {
   const isMenunggu = data.status === 'menunggu';
   const isPenanganan = data.status === 'penanganan';
   const displayId = `LAP-${String(data.id).padStart(6, '0')}`;
@@ -46,7 +46,10 @@ export default function TaskCard({ data, onValidate, onDetail, onUpdate }) {
           {isMenunggu ? (
             <button 
               onClick={() => onValidate(data)}
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors active:scale-95"
+              disabled={!canValidate}
+              className={`flex-1 text-white text-sm font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors active:scale-95 ${
+                canValidate ? 'bg-slate-900 hover:bg-slate-800' : 'bg-slate-300 cursor-not-allowed'
+              }`}
             >
               <ShieldCheck size={18} /> Validasi Awal
             </button>

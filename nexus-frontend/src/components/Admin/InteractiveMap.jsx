@@ -91,8 +91,8 @@ export default function InteractiveMap({
         </CircleMarker>
 
         {/* Marker Laporan Bencana */}
-        {disasterReports.map((point) => (
-          <CircleMarker key={point.id} center={point.coordinates} radius={9} pathOptions={{ color: getReportColor(point), fillColor: getReportColor(point), fillOpacity: 0.8 }}>
+        {disasterReports.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
+          <CircleMarker key={`${point.id ?? 'report'}-${index}`} center={point.coordinates} radius={9} pathOptions={{ color: getReportColor(point), fillColor: getReportColor(point), fillOpacity: 0.8 }}>
             <Popup className="font-sans">
               <div className="p-1">
                 <h3 className="font-bold text-slate-900 mb-1 text-sm">Laporan {point.category}</h3>
@@ -105,8 +105,8 @@ export default function InteractiveMap({
         ))}
 
         {/* Marker Logistik */}
-        {logisticPoints.map((point) => (
-          <CircleMarker key={point.id} center={point.coordinates} radius={7} pathOptions={{ color: getResourceColor(point.status, 'logistik'), fillColor: getResourceColor(point.status, 'logistik'), fillOpacity: 0.9 }}>
+        {logisticPoints.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
+          <CircleMarker key={`${point.id ?? 'logistik'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getResourceColor(point.status, 'logistik'), fillColor: getResourceColor(point.status, 'logistik'), fillOpacity: 0.9 }}>
             <Popup>
               <div className="p-1">
                 <h3 className="font-bold text-sm text-slate-800">{point.label}</h3>
@@ -118,8 +118,8 @@ export default function InteractiveMap({
         ))}
 
         {/* Marker Faskes */}
-        {faskesPoints.map((point) => (
-          <CircleMarker key={point.id} center={point.coordinates} radius={7} pathOptions={{ color: getResourceColor(point.status, 'faskes'), fillColor: getResourceColor(point.status, 'faskes'), fillOpacity: 0.9 }}>
+        {faskesPoints.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
+          <CircleMarker key={`${point.id ?? 'faskes'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getResourceColor(point.status, 'faskes'), fillColor: getResourceColor(point.status, 'faskes'), fillOpacity: 0.9 }}>
             <Popup>
               <div className="p-1">
                 <h3 className="font-bold text-sm text-slate-800">{point.label}</h3>

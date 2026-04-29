@@ -26,6 +26,6 @@ router.post('/tambah', auth, upload.single('bukti_visual'), laporanController.bu
 router.get('/riwayat', auth, laporanController.getRiwayatLaporan);
 router.get('/all', auth, laporanController.getAllLaporan);
 router.patch('/update/:id_laporan', auth, upload.single('foto_progress'), laporanController.updateProgressLaporan);
-router.patch('/validasi/:id_laporan', auth, laporanController.validasiLaporan);
+router.patch('/validasi/:id_laporan', auth, upload.single('foto_validasi'), laporanController.validasiLaporan);
 
 module.exports = router;

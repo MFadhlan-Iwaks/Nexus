@@ -1,6 +1,6 @@
 import { X, MapPin, Clock, User, ShieldCheck, AlignLeft, Layers, Navigation } from 'lucide-react';
 
-export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidation, onOpenUpdate }) {
+export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidation, onOpenUpdate, canValidate }) {
   if (!isOpen || !task) return null;
 
   const isMenunggu = task.status === 'menunggu';
@@ -107,8 +107,14 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
                 onOpenUpdate(task);
               }
             }}
-            disabled={!isMenunggu && !isPenanganan}
-            className={`flex-[2] font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 ${isMenunggu || isPenanganan ? 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'}`}
+            disabled={(isMenunggu && !canValidate) || (!isMenunggu && !isPenanganan)}
+            className={`flex-[2] font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 ${
+              isMenunggu || isPenanganan
+                ? (isMenunggu && !canValidate)
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95'
+                : 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
+            }`}
           >
             <ShieldCheck size={18} /> {isMenunggu ? 'Lakukan Validasi' : isPenanganan ? 'Update Progres' : 'Status Final'}
           </button>

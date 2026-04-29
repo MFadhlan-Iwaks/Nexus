@@ -27,11 +27,10 @@ export default function RegisterForm({ onSuccess }) {
 
     try {
       await register({
-        nama: formData.nama_lengkap,
+        nama_lengkap: formData.nama_lengkap,
         no_hp: formData.no_hp,
-        password: formData.password,
         alamat: formData.alamat,
-        role: 'masyarakat',
+        password: formData.password,
       }); // → authService → POST /api/auth/register
 
       // Kembali ke tab login setelah daftar berhasil

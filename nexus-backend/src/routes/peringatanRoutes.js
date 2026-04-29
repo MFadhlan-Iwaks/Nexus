@@ -7,4 +7,8 @@ const auth = require('../middleware/authMiddleware'); // Menggunakan pelindung t
 // Hanya bisa diakses jika membawa Token JWT
 router.get('/', auth, peringatanController.getPeringatanDini);
 
+// Endpoint: POST /api/peringatan
+// Hanya bisa diakses jika membawa Token JWT
+router.post('/', auth, peringatanController.createPeringatanDini);
+
 module.exports = router;

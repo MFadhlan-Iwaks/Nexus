@@ -5,20 +5,13 @@
 // ✅ BACKEND ASLI:
 //   - createReport()         → POST /api/laporan/tambah
 //   - getRiwayatMasyarakat() → GET  /api/laporan/riwayat
-//
-// 🟡 MOCK via shared store (TRC & Admin sync):
-//   - getReports()           → baca dari store (shared)
-//   - validateReport()       → tulis ke store → Admin ikut berubah
-//   - updateReportProgress() → tulis ke store → Admin ikut berubah
-//   - approveReport()        → tulis ke store
-//   - rejectReport()         → tulis ke store
+//   - getReports()           → GET  /api/laporan/all
+//   - validateReport()       → PATCH /api/laporan/validasi/:id
+//   - updateReportProgress() → PATCH /api/laporan/update/:id
 // ============================================================
 
-import {
-  getReportsState,
-  patchReport,
-  patchReportTrc,
-} from '@/data/store';
+import { patchReport, patchReportTrc } from '@/data/store';
+import { getToken } from '@/services/authService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -57,66 +50,89 @@ export async function createReport(formData) {
   return data;
 }
 
-// ─── SHARED STORE (TRC ↔ Admin sync) ─────────────────────────
+// ─── TRC / OPERATOR ─────────────────────────────────────────
 
 /**
- * Ambil semua laporan dari shared store.
- * 🟡 Mock — ganti saat backend siap:
- * TODO: GET /api/laporan
+ * Ambil semua laporan.
+ * ✅ Backend: GET /api/laporan/all
  */
 export async function getReports() {
-  await simulateDelay();
-  return getReportsState();
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/laporan/all`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil laporan.');
+  return data.data ?? [];
 }
 
 /**
- * Ambil laporan berdasarkan ID dari shared store.
+ * Ambil laporan berdasarkan ID.
  */
 export async function getReportById(id) {
-  await simulateDelay(200);
-  const report = getReportsState().find((r) => r.id === id);
+  const reports = await getReports();
+  const report = reports.find((r) => String(r.id_laporan ?? r.id) === String(id));
   if (!report) throw new Error('Laporan tidak ditemukan.');
   return report;
 }
 
 /**
- * TRC: Validasi laporan — menulis ke shared store, Admin ikut berubah.
- * 🟡 Mock — TODO: PATCH /api/laporan/:id/validasi
+ * TRC: Validasi laporan.
+ * ✅ Backend: PATCH /api/laporan/validasi/:id
  * @param {string} reportId
- * @param {{ status_validasi, skala_kedaruratan, fase_penanganan, catatan, foto_bukti, petugas, id }} payload
+ * @param {{ status_validasi, skala_kedaruratan, catatan }} payload
  */
 export async function validateReport(reportId, payload) {
-  await simulateDelay(300);
-  // Tulis ke store → admin dashboard langsung terbaca
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+
   const isValid = payload.status_validasi === 'valid';
-  patchReport(reportId, { status: isValid ? 'menunggu_admin' : 'ditolak' });
-  patchReportTrc(reportId, {
-    status_validasi: payload.status_validasi,
-    skala_kedaruratan: payload.skala_kedaruratan,
-    fase_penanganan: payload.fase_penanganan ?? 'Identifikasi',
-    catatan: payload.catatan ?? '',
-    petugas: payload.petugas,
-    id: payload.trcId,
-    waktu_validasi: new Date().toISOString(),
+  const formData = new FormData();
+  formData.append('is_valid', String(isValid));
+  if (payload.catatan) formData.append('keterangan', payload.catatan);
+  if (payload.skala_kedaruratan) formData.append('skala_darurat', payload.skala_kedaruratan);
+  if (payload.foto_validasi) formData.append('foto_validasi', payload.foto_validasi);
+
+  const res = await fetch(`${API_BASE}/laporan/validasi/${reportId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
   });
-  return { message: 'Validasi berhasil dikirim ke Admin.', reportId };
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal memvalidasi laporan.');
+  return data;
 }
 
 /**
- * TRC: Update progres penanganan — menulis ke shared store.
- * 🟡 Mock — TODO: PATCH /api/laporan/:id/progres
+ * TRC: Update progres penanganan.
+ * ✅ Backend: PATCH /api/laporan/update/:id
  */
 export async function updateReportProgress(reportId, payload) {
-  await simulateDelay(300);
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+
   const isSelesai = payload.fase_penanganan === 'Penanganan Selesai';
-  patchReport(reportId, { status: isSelesai ? 'selesai' : 'diproses' });
-  patchReportTrc(reportId, {
-    fase_penanganan: payload.fase_penanganan,
-    catatan: payload.catatan ?? '',
-    waktu_update: new Date().toISOString(),
+  const formData = new FormData();
+  formData.append('status', isSelesai ? 'Selesai' : 'Diproses');
+  formData.append('fase_penanganan', payload.fase_penanganan);
+  if (payload.catatan) formData.append('pesan_situasi', payload.catatan);
+  if (payload.foto_progress) formData.append('foto_progress', payload.foto_progress);
+
+  const res = await fetch(`${API_BASE}/laporan/update/${reportId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
   });
-  return { message: 'Progres diperbarui.', reportId };
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal memperbarui progres.');
+  return data;
 }
+
+// ─── ADMIN MOCK (masih memakai store) ───────────────────────
 
 /**
  * Admin: Setujui laporan.
@@ -136,4 +152,12 @@ export async function rejectReport(reportId) {
   await simulateDelay(200);
   patchReport(reportId, { status: 'ditolak' });
   return { message: 'Laporan ditolak.', reportId };
+}
+
+/**
+ * Shared store update (digunakan oleh UI mock tertentu).
+ */
+export function patchReportLocal(reportId, changes, trcChanges) {
+  if (changes) patchReport(reportId, changes);
+  if (trcChanges) patchReportTrc(reportId, trcChanges);
 }

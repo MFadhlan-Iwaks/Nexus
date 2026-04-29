@@ -3,7 +3,7 @@
 // src/app/trc/dashboard/page.js
 // TRC: validasi dan update progres menulis ke shared store → admin ikut berubah
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Radio, ClipboardList } from 'lucide-react';
 import TRCNavbar from '@/components/trc/TRCNavbar';
 import TaskCard from '@/components/trc/TaskCard';
@@ -16,24 +16,83 @@ import { getReports } from '@/services/reportService';
 import { mockTrcProfile } from '@/data/mockData';
 
 // Mapper: format dari mockReports → format TaskCard
-function mapReportToTask(report) {
+function toNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeStatus(rawStatus, trcStatus) {
+  const s = String(rawStatus || '').toLowerCase();
+  if (s.includes('menunggu')) return 'menunggu';
+  if (s.includes('diproses')) return 'penanganan';
+  if (s.includes('ditolak')) return 'ditolak';
+  if (s.includes('selesai')) return 'selesai';
+  if (trcStatus) return 'penanganan';
+  return 'menunggu';
+}
+
+function toRadians(deg) {
+  return (deg * Math.PI) / 180;
+}
+
+function calcDistanceKm(from, to) {
+  if (!from || !to) return null;
+  const lat1 = toRadians(from.lat);
+  const lat2 = toRadians(to.lat);
+  const dLat = lat2 - lat1;
+  const dLon = toRadians(to.lon - from.lon);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c;
+}
+
+function formatDistance(km) {
+  if (!Number.isFinite(km)) return 'N/A';
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(2)} km`;
+}
+
+const uploadBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+function mapReportToTask(report, trcCoords) {
   const m = report?.masyarakat || {};
   const t = report?.trc || {};
+  const latitude = toNumber(report?.latitude ?? m.latitude);
+  const longitude = toNumber(report?.longitude ?? m.longitude);
+  const mapsUrl = latitude !== null && longitude !== null
+    ? `https://www.google.com/maps?q=${latitude},${longitude}`
+    : null;
+
+  const kategori = report?.kategori_bencana ?? m.kategori;
+  const deskripsi = report?.deskripsi_kejadian ?? m.deskripsi;
+  const waktuRaw = report?.waktu_laporan ?? m.waktu_lapor;
+  const pelapor = report?.nama_lengkap ?? m.nama;
+  const foto = report?.bukti_visual
+    ? `${uploadBase}/uploads/${report.bukti_visual}`
+    : (m.foto || null);
+  const reportId = report?.id_laporan ?? report?.id;
+  const distanceKm = trcCoords && latitude !== null && longitude !== null
+    ? calcDistanceKm(trcCoords, { lat: latitude, lon: longitude })
+    : null;
+
   return {
-    id: report?.id || '-',
-    status: report?.status === 'menunggu_admin' || report?.status === 'diproses'
-      ? (t.status_validasi ? 'penanganan' : 'menunggu')
-      : report?.status === 'selesai' ? 'selesai' : 'menunggu',
-    kategori: m.kategori || 'Tidak Diketahui',
-    judul: `${m.kategori || 'Insiden'} — ${report?.id || ''}`,
-    lokasi: `${m.latitude?.toFixed(4) ?? '-'}, ${m.longitude?.toFixed(4) ?? '-'}`,
-    koordinat: `${m.latitude ?? '-'}, ${m.longitude ?? '-'}`,
-    deskripsi: m.deskripsi || '-',
-    waktu: m.waktu_lapor ? new Date(m.waktu_lapor).toLocaleString('id-ID') : '-',
-    pelapor: m.nama || 'Anonim',
-    foto: m.foto || null,
+    id: reportId || '-',
+    status: normalizeStatus(report?.status, t.status_validasi),
+    kategori: kategori || 'Tidak Diketahui',
+    judul: `${kategori || 'Insiden'} — ${reportId || ''}`,
+    lokasi: latitude !== null && longitude !== null
+      ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      : '-, -',
+    koordinat: latitude !== null && longitude !== null
+      ? `${latitude}, ${longitude}`
+      : '-, -',
+    deskripsi: deskripsi || '-',
+    waktu: waktuRaw ? new Date(waktuRaw).toLocaleString('id-ID') : '-',
+    pelapor: pelapor || 'Anonim',
+    foto: foto || null,
     trc: t,
-    jarak: '~1-3 km',
+    jarak: formatDistance(distanceKm),
+    mapsUrl,
   };
 }
 
@@ -43,23 +102,49 @@ export default function TRCDashboard() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [geoEnabled, setGeoEnabled] = useState(false);
+  const [trcCoords, setTrcCoords] = useState(null);
 
   // State laporan lokal agar UI update langsung setelah aksi TRC
   const [localTasks, setLocalTasks] = useState(null);
 
+  useEffect(() => {
+    if (!geoEnabled || !navigator.geolocation) {
+      setTrcCoords(null);
+      return undefined;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setTrcCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
+      () => {
+        setTrcCoords(null);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [geoEnabled]);
+
   const { loading, error, refetch } = useAsync(async () => {
     const reports = await getReports();
-    setLocalTasks(reports.map(mapReportToTask));
-  }, []);
+    setLocalTasks(reports.map((r) => mapReportToTask(r, trcCoords)));
+  }, [trcCoords]);
 
   const tasks = localTasks || [];
 
   const laporanBaruCount = tasks.filter((t) => t.status === 'menunggu').length;
   const tugasAktifCount = tasks.filter((t) => t.status === 'penanganan').length;
+  const tugasDitolakCount = tasks.filter((t) => t.status === 'ditolak').length;
 
-  const filteredTasks = tasks.filter((t) =>
-    activeTab === 'baru' ? t.status === 'menunggu' : t.status === 'penanganan'
-  );
+  const filteredTasks = tasks.filter((t) => {
+    if (activeTab === 'baru') return t.status === 'menunggu';
+    if (activeTab === 'aktif') return t.status === 'penanganan';
+    return t.status === 'ditolak';
+  });
 
   // Callback setelah validasi → update status task di UI
   const handleValidationSuccess = useCallback(({ id, status_validasi }) => {
@@ -67,7 +152,7 @@ export default function TRCDashboard() {
       prev?.map((t) =>
         t.id !== id ? t : {
           ...t,
-          status: status_validasi === 'valid' ? 'penanganan' : 'selesai',
+          status: status_validasi === 'valid' ? 'penanganan' : 'ditolak',
           trc: { ...t.trc, status_validasi },
         }
       )
@@ -106,15 +191,37 @@ export default function TRCDashboard() {
               <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
                 <Radio size={12} className="animate-pulse" /> Live Tracking Aktif
               </span>
-              <p className="text-slate-500 text-sm">Lokasi: {mockTrcProfile.lokasi || 'Kec. Tawang'}</p>
+              <p className="text-slate-500 text-sm">
+                Lokasi: {trcCoords
+                  ? `${trcCoords.lat.toFixed(5)}, ${trcCoords.lon.toFixed(5)}`
+                  : (mockTrcProfile.lokasi || 'Kec. Tawang')}
+              </p>
             </div>
           </div>
-          <button
-            onClick={refetch}
-            className="text-xs font-bold text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            ↻ Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+              <span className={`text-xs font-bold ${geoEnabled ? 'text-emerald-600' : 'text-slate-500'}`}>
+                Geotagging {geoEnabled ? 'ON' : 'OFF'}
+              </span>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={geoEnabled}
+                  onChange={(e) => setGeoEnabled(e.target.checked)}
+                />
+                <span className={`w-10 h-5 rounded-full transition-colors ${geoEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                  <span className={`block w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${geoEnabled ? 'translate-x-5' : 'translate-x-1'} mt-0.5`} />
+                </span>
+              </label>
+            </div>
+            <button
+              onClick={refetch}
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              ↻ Refresh
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigasi */}
@@ -146,10 +253,16 @@ export default function TRCDashboard() {
         {!loading && !error && filteredTasks.length === 0 && (
           <EmptyState
             icon={ClipboardList}
-            title={activeTab === 'baru' ? 'Tidak Ada Laporan Baru' : 'Tidak Ada Tugas Aktif'}
+            title={activeTab === 'baru'
+              ? 'Tidak Ada Laporan Baru'
+              : activeTab === 'aktif'
+                ? 'Tidak Ada Tugas Aktif'
+                : 'Tidak Ada Tugas Ditolak'}
             description={activeTab === 'baru'
               ? 'Semua laporan masuk sudah divalidasi.'
-              : 'Belum ada tugas aktif saat ini.'}
+              : activeTab === 'aktif'
+                ? 'Belum ada tugas aktif saat ini.'
+                : 'Belum ada laporan yang ditolak.'}
           />
         )}
 
@@ -162,6 +275,7 @@ export default function TRCDashboard() {
                 onValidate={(t) => { setSelectedTask(t); setIsValidationModalOpen(true); }}
                 onUpdate={(t) => { setSelectedTask(t); setIsUpdateModalOpen(true); }}
                 onDetail={(t) => { setSelectedTask(t); setIsDetailModalOpen(true); }}
+                canValidate={geoEnabled}
               />
             ))}
           </div>
@@ -184,6 +298,12 @@ export default function TRCDashboard() {
           setSelectedTask(t);
           setIsValidationModalOpen(true);
         }}
+        onOpenUpdate={(t) => {
+          setIsDetailModalOpen(false);
+          setSelectedTask(t);
+          setIsUpdateModalOpen(true);
+        }}
+        canValidate={geoEnabled}
       />
       <UpdateProgressModal
         isOpen={isUpdateModalOpen}

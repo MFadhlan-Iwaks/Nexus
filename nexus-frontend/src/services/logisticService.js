@@ -12,6 +12,9 @@ import {
   getStockHistoryState,
   addStockHistory,
 } from '@/data/store';
+import { getToken, getLocalUser } from '@/services/authService';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
@@ -35,8 +38,23 @@ export function getLogisticStatus(stok) {
  * 🟡 Mock — TODO: GET /api/logistik
  */
 export async function getLogistics() {
-  await simulateDelay();
-  return getLogisticsState();
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/logistik`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil logistik.');
+  return (data.data ?? []).map((item) => ({
+    id: item.id_logistik,
+    nama: item.nama_barang,
+    kategori: item.kategori || 'Umum',
+    stok: Number(item.jumlah_stok ?? 0),
+    unit: item.unit || 'Unit',
+    institusi: item.id_instansi,
+    latitude: item.latitude ?? null,
+    longitude: item.longitude ?? null,
+  }));
 }
 
 /**
@@ -45,15 +63,40 @@ export async function getLogistics() {
  * @param {{ nama, kategori, stok, unit, institusi }} data
  */
 export async function createLogistic(data) {
-  await simulateDelay(200);
-  const newItem = {
-    id: `log-${Date.now()}`,
-    ...data,
-    stok: Number(data.stok),
-    terakhir_update: new Date().toISOString(),
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const user = getLocalUser();
+
+  const res = await fetch(`${API_BASE}/logistik`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      id_instansi: user?.id_instansi || null,
+      nama_barang: data.nama,
+      kategori: data.kategori,
+      unit: data.unit,
+      jumlah_stok: Number(data.stok ?? 0),
+    }),
+  });
+
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.message || 'Gagal menambah logistik.');
+
+  const item = result.data;
+  const mapped = {
+    id: item.id_logistik,
+    nama: item.nama_barang,
+    kategori: item.kategori || data.kategori || 'Umum',
+    stok: Number(item.jumlah_stok ?? 0),
+    unit: item.unit || data.unit || 'Unit',
+    institusi: item.id_instansi,
+    latitude: item.latitude ?? null,
+    longitude: item.longitude ?? null,
   };
-  addLogistic(newItem);
-  return { message: 'Item berhasil ditambahkan.', item: newItem };
+  return { message: result.message, item: mapped };
 }
 
 /**
@@ -63,9 +106,19 @@ export async function createLogistic(data) {
  * @param {{ stok: number }} data
  */
 export async function updateLogistic(id, data) {
-  await simulateDelay(200);
-  patchLogistic(id, { stok: Number(data.stok), terakhir_update: new Date().toISOString() });
-  return { message: 'Stok berhasil diperbarui.', id };
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/logistik/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ jumlah_stok: Number(data.stok ?? 0) }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.message || 'Gagal memperbarui logistik.');
+  return { message: result.message, id };
 }
 
 /**

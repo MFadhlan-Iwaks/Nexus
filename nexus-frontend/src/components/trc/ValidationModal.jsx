@@ -1,8 +1,8 @@
 // src/components/trc/ValidationModal.jsx
 // TRC validasi laporan → tulis ke shared store via reportService → admin ikut berubah
 
-import { X, CheckCircle2, AlertTriangle, BarChart, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { X, CheckCircle2, AlertTriangle, BarChart, Loader2, Camera } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { validateReport } from '@/services/reportService';
 import { getLocalUser } from '@/services/authService';
 
@@ -11,13 +11,26 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
   const [skala, setSkala] = useState(null);
   const [catatan, setCatatan] = useState('');
   const [loading, setLoading] = useState(false);
+  const [buktiFoto, setBuktiFoto] = useState(null);
+  const [buktiError, setBuktiError] = useState('');
+
+  const isFormComplete = status === 'hoax' || (status === 'valid' && skala !== null);
+  const canSubmit = isFormComplete && Boolean(buktiFoto);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStatus(null);
+      setSkala(null);
+      setCatatan('');
+      setBuktiFoto(null);
+      setBuktiError('');
+    }
+  }, [isOpen]);
 
   if (!isOpen || !task) return null;
 
-  const isFormComplete = status === 'hoax' || (status === 'valid' && skala !== null);
-
   const handleKirim = async () => {
-    if (!isFormComplete) return;
+    if (!canSubmit) return;
     setLoading(true);
     try {
       const user = getLocalUser();
@@ -26,13 +39,13 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
         skala_kedaruratan: status === 'valid' ? skala : 'rendah',
         fase_penanganan: 'Identifikasi & Asesmen',
         catatan,
+        foto_validasi: buktiFoto,
         petugas: user?.nama || user?.name || 'Petugas TRC',
         trcId: user?.id || 'TRC-XXX',
       });
 
       onSuccess?.({ id: task.id, status_validasi: status, skala_kedaruratan: skala });
       onClose();
-      setStatus(null); setSkala(null); setCatatan('');
     } catch (err) {
       alert(`Gagal mengirim validasi: ${err.message}`);
     } finally {
@@ -117,19 +130,51 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
               placeholder="Keterangan situasi lapangan, kondisi warga, dll..."
             />
           </div>
+
+          {/* 4. Bukti Foto Validasi */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <Camera size={16} className="text-slate-400" /> {status === 'valid' ? '4.' : '3.'} Bukti Foto Validasi <span className="text-red-500">*</span>
+            </label>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800"
+                onChange={(e) => {
+                  const file = e.target.files && e.target.files[0];
+                  if (!file) {
+                    setBuktiFoto(null);
+                    setBuktiError('');
+                    return;
+                  }
+                  if (!file.type.startsWith('image/')) {
+                    setBuktiFoto(null);
+                    setBuktiError('File harus berupa gambar.');
+                    return;
+                  }
+                  setBuktiFoto(file);
+                  setBuktiError('');
+                }}
+              />
+              <p className="text-xs text-slate-500 mt-2">Unggah foto lapangan sebagai bukti validasi asli/palsu.</p>
+              {buktiError && <p className="text-red-600 mt-2 text-xs">{buktiError}</p>}
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
         <div className="p-4 sm:p-5 border-t border-slate-100 bg-white sticky bottom-0">
           <button
-            disabled={!isFormComplete || loading}
+            disabled={!canSubmit || loading}
             onClick={handleKirim}
             className={`w-full font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2
-              ${isFormComplete && !loading ? 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+              ${canSubmit && !loading ? 'bg-slate-900 hover:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
             {loading
               ? <><Loader2 size={18} className="animate-spin" /> Mengirim...</>
-              : <><CheckCircle2 size={18} /> Kirim Hasil Validasi ke Admin</>
+              : <><CheckCircle2 size={18} /> Kirim Hasil Validasi</>
             }
           </button>
         </div>

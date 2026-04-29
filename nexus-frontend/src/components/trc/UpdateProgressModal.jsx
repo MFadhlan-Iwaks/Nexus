@@ -109,7 +109,7 @@ export default function UpdateProgressModal({ isOpen, onClose, task, onSuccess }
           >
             {loading
               ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</>
-              : <><RefreshCw size={18} /> Simpan Pembaruan ke Admin</>
+              : <><RefreshCw size={18} /> Simpan Pembaruan</>
             }
           </button>
         </div>

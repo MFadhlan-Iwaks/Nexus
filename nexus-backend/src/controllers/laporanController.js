@@ -89,8 +89,8 @@ exports.getAllLaporan = async (req, res) => {
   try {
     // Kita lakukan JOIN dengan tabel users agar TRC tahu nama & No HP pelapor
     const query = `
-      SELECT l.id_laporan, l.kategori_bencana, l.deskripsi_kejadian, l.status, 
-             l.waktu_laporan, l.bukti_visual, l.fase_penanganan, l.foto_progress,
+            SELECT l.id_laporan, l.kategori_bencana, l.deskripsi_kejadian, l.status, 
+              l.waktu_laporan, l.bukti_visual, l.fase_penanganan, l.foto_progress, l.foto_validasi,
              ST_Y(l.koordinat::geometry) AS latitude,
              ST_X(l.koordinat::geometry) AS longitude,
              u.nama_lengkap, u.no_hp
@@ -110,13 +110,17 @@ exports.getAllLaporan = async (req, res) => {
 exports.validasiLaporan = async (req, res) => {
   try {
     const { id_laporan } = req.params;
-    const { is_valid, keterangan } = req.body; 
+    const { is_valid, keterangan, skala_darurat } = req.body; 
     // is_valid: boolean (true jika benar, false jika hoax)
+    const foto_validasi = req.file ? req.file.filename : null;
+
+    const isValid = is_valid === true || is_valid === 'true' || is_valid === 1 || is_valid === '1';
+    const id_user_trc = req.user.id;
 
     let status_baru = '';
     let fase_baru = '';
 
-    if (is_valid === true) {
+    if (isValid) {
       status_baru = 'Diproses';
       fase_baru = 'Persiapan Menuju Lokasi'; // Otomatis masuk ke fase awal penanganan
     } else {
@@ -126,13 +130,19 @@ exports.validasiLaporan = async (req, res) => {
 
     await pool.query(
       `UPDATE laporan_bencana 
-       SET status = $1, fase_penanganan = $2, keterangan_validasi = $3 
-       WHERE id_laporan = $4`,
-      [status_baru, fase_baru, keterangan || null, id_laporan]
+       SET status = $1, fase_penanganan = $2, keterangan_validasi = $3, foto_validasi = $4
+       WHERE id_laporan = $5`,
+      [status_baru, fase_baru, keterangan || null, foto_validasi, id_laporan]
+    );
+
+    await pool.query(
+      `INSERT INTO validasi_trc (id_laporan, id_user_trc, skala_darurat, waktu_validasi)
+       VALUES ($1, $2, $3, NOW())`,
+      [id_laporan, id_user_trc, skala_darurat || null]
     );
 
     res.status(200).json({ 
-        message: is_valid ? "Laporan divalidasi dan masuk ke Tugas Aktif." : "Laporan ditandai sebagai Hoax." 
+      message: isValid ? "Laporan divalidasi dan masuk ke Tugas Aktif." : "Laporan ditandai sebagai Hoax." 
     });
 
   } catch (err) {

@@ -5,16 +5,36 @@
 // ============================================================
 
 import { getBroadcastsState, addBroadcast, removeBroadcast } from '@/data/store';
+import { getToken } from '@/services/authService';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
+function normalizeBroadcast(item) {
+  if (!item) return null;
+  return {
+    id: item.id ?? item.id_peringatan ?? `bc-${Date.now()}`,
+    pesan_peringatan: item.pesan_peringatan ?? '',
+    waktu_kirim: item.waktu_kirim ?? new Date().toISOString(),
+    level: item.level ?? 'sedang',
+    target: item.target ?? '- ',
+    pengirim: item.pengirim ?? 'BPBD',
+  };
+}
+
 /**
- * Ambil semua broadcast dari shared store.
- * 🟡 Mock — TODO: GET /api/peringatan
+ * Ambil semua broadcast dari backend.
+ * ✅ Backend: GET /api/peringatan (auth required)
  */
 export async function getBroadcasts() {
-  await simulateDelay();
-  return getBroadcastsState();
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/peringatan`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil peringatan dini.');
+  return (data.data ?? []).map(normalizeBroadcast);
 }
 
 /**
