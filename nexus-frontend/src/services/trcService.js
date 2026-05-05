@@ -1,22 +1,61 @@
-// src/services/trcService.js — pakai shared store
-import { getTrcUnitsState, patchTrcUnit } from '@/data/store';
+// src/services/trcService.js
+import { getToken } from '@/services/authService';
 
-const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export async function getTrcUnits() {
-  await simulateDelay();
-  return getTrcUnitsState();
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/admin/trc`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil data TRC.');
+  return data.data ?? [];
+}
+
+export async function getTrcLocations() {
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/admin/trc-locations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil lokasi TRC.');
+  return data.data ?? [];
+}
+
+export async function postTrcLocation(payload) {
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/trc/location`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengirim lokasi TRC.');
+  return data.data;
+}
+
+export async function deleteTrcLocation() {
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/trc/location`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal menghapus lokasi TRC.');
+  return data;
 }
 
 export async function getTrcUnitById(id) {
-  await simulateDelay(200);
-  const unit = getTrcUnitsState().find((t) => t.id === id);
+  const units = await getTrcUnits();
+  const unit = units.find((t) => String(t.id) === String(id));
   if (!unit) throw new Error('Unit TRC tidak ditemukan.');
   return unit;
-}
-
-export async function updateTrcStatus(id, payload) {
-  await simulateDelay(200);
-  patchTrcUnit(id, { ...payload, waktu_update: new Date().toISOString() });
-  return { message: 'Status TRC diperbarui.', id };
 }

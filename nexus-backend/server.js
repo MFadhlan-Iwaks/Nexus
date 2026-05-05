@@ -8,6 +8,9 @@ const laporanRoutes = require('./src/routes/laporanRoutes');
 const peringatanRoutes = require('./src/routes/peringatanRoutes');
 const logistikRoutes = require('./src/routes/logistikRoutes');
 const faskesRoutes = require('./src/routes/faskesRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
+const trcRoutes = require('./src/routes/trcRoutes');
+const operatorRoutes = require('./src/routes/operatorRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -23,6 +26,9 @@ app.use('/api/laporan', laporanRoutes);
 app.use('/api/peringatan', peringatanRoutes);
 app.use('/api/logistik', logistikRoutes);
 app.use('/api/faskes', faskesRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/trc', trcRoutes);
+app.use('/api/operator', operatorRoutes);
 
 io.on('connection', (socket) => {
   console.log('User connected to NEXUS Socket');

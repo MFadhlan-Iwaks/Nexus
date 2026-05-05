@@ -50,7 +50,7 @@ exports.login = async (req, res) => {
         res.status(200).json({
             message: "Login Berhasil!",
             token,
-            user: { id: user.id_user, nama: user.nama_lengkap, role: user.role }
+            user: { id: user.id_user, nama: user.nama_lengkap, role: user.role, id_instansi: user.id_instansi }
         });
     } catch (err) {
         res.status(500).json({ message: "Server Error saat login" });

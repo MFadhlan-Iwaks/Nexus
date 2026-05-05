@@ -137,8 +137,14 @@ export async function deleteLogistic(id) {
  * 🟡 Mock — TODO: GET /api/logistik/riwayat
  */
 export async function getStockHistory() {
-  await simulateDelay();
-  return getStockHistoryState();
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/operator/riwayat`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil riwayat stok.');
+  return data.data ?? [];
 }
 
 /**
@@ -155,18 +161,16 @@ export function recordStockHistory(entry) {
  * 🟡 Mock — TODO: GET /api/logistik/summary
  */
 export async function getLogisticSummary() {
-  await simulateDelay();
-  const items = getLogisticsState();
-  const grouped = items.reduce((acc, item) => {
-    const key = item.institusi || 'Umum';
-    if (!acc[key]) acc[key] = { institution: key, totalItems: 0, availableStock: 0, id: key };
-    acc[key].totalItems += 1;
-    acc[key].availableStock += item.stok || 0;
-    return acc;
-  }, {});
-  return Object.values(grouped).map((g) => ({
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/admin/logistik/summary`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil ringkasan logistik.');
+  return (data.data ?? []).map((g) => ({
     ...g,
-    status: getLogisticStatus(g.availableStock),
+    status: g.status || getLogisticStatus(g.availableStock || 0),
     updatedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
   }));
 }

@@ -3,7 +3,8 @@
 // src/app/trc/dashboard/page.js
 // TRC: validasi dan update progres menulis ke shared store → admin ikut berubah
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Radio, ClipboardList } from 'lucide-react';
 import TRCNavbar from '@/components/trc/TRCNavbar';
 import TaskCard from '@/components/trc/TaskCard';
@@ -13,7 +14,9 @@ import UpdateProgressModal from '@/components/trc/UpdateProgressModal';
 import { LoadingState, ErrorState, EmptyState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
 import { getReports } from '@/services/reportService';
+import { postTrcLocation, deleteTrcLocation } from '@/services/trcService';
 import { mockTrcProfile } from '@/data/mockData';
+import { getLocalUser } from '@/services/authService';
 
 // Mapper: format dari mockReports → format TaskCard
 function toNumber(value) {
@@ -54,7 +57,7 @@ function formatDistance(km) {
 
 const uploadBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
 
-function mapReportToTask(report, trcCoords) {
+function mapReportToTask(report, trcCoords, index) {
   const m = report?.masyarakat || {};
   const t = report?.trc || {};
   const latitude = toNumber(report?.latitude ?? m.latitude);
@@ -71,12 +74,15 @@ function mapReportToTask(report, trcCoords) {
     ? `${uploadBase}/uploads/${report.bukti_visual}`
     : (m.foto || null);
   const reportId = report?.id_laporan ?? report?.id;
+  const isNumericId = reportId !== undefined && reportId !== null && /^\d+$/.test(String(reportId));
+  const displayId = isNumericId ? String(reportId) : String((index ?? 0) + 1);
   const distanceKm = trcCoords && latitude !== null && longitude !== null
     ? calcDistanceKm(trcCoords, { lat: latitude, lon: longitude })
     : null;
 
   return {
     id: reportId || '-',
+    displayId,
     status: normalizeStatus(report?.status, t.status_validasi),
     kategori: kategori || 'Tidak Diketahui',
     judul: `${kategori || 'Insiden'} — ${reportId || ''}`,
@@ -97,6 +103,47 @@ function mapReportToTask(report, trcCoords) {
 }
 
 export default function TRCDashboard() {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(null);
+
+  useEffect(() => {
+    const user = getLocalUser();
+    const role = String(user?.role || '').toLowerCase();
+    if (!user) {
+      document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
+      document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
+      setIsAuthorized(false);
+      router.replace('/auth');
+      return;
+    }
+    if (role !== 'trc') {
+      const target = role === 'admin'
+        ? '/admin/dashboard'
+        : role === 'operator'
+          ? '/operator/dashboard'
+          : role === 'masyarakat'
+            ? '/masyarakat/dashboard'
+            : '/auth';
+      setIsAuthorized(false);
+      router.replace(target);
+      return;
+    }
+    setIsAuthorized(true);
+  }, [router]);
+
+  if (isAuthorized === null) {
+    return <LoadingState message="Memeriksa akses..." />;
+  }
+
+  if (isAuthorized === false) {
+    return <LoadingState message="Mengalihkan..." />;
+  }
+
+  return <TRCDashboardContent />;
+}
+
+function TRCDashboardContent() {
+  const localUser = getLocalUser();
   const [activeTab, setActiveTab] = useState('baru');
   const [selectedTask, setSelectedTask] = useState(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
@@ -104,6 +151,7 @@ export default function TRCDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [geoEnabled, setGeoEnabled] = useState(false);
   const [trcCoords, setTrcCoords] = useState(null);
+  const trcCoordsRef = useRef(null);
 
   // State laporan lokal agar UI update langsung setelah aksi TRC
   const [localTasks, setLocalTasks] = useState(null);
@@ -111,15 +159,19 @@ export default function TRCDashboard() {
   useEffect(() => {
     if (!geoEnabled || !navigator.geolocation) {
       setTrcCoords(null);
+      trcCoordsRef.current = null;
       return undefined;
     }
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setTrcCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setTrcCoords(coords);
+        trcCoordsRef.current = coords;
       },
       () => {
         setTrcCoords(null);
+        trcCoordsRef.current = null;
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
@@ -129,9 +181,34 @@ export default function TRCDashboard() {
     };
   }, [geoEnabled]);
 
+  useEffect(() => {
+    if (!geoEnabled) {
+      deleteTrcLocation().catch(() => undefined);
+      return undefined;
+    }
+
+    const pushLocation = async () => {
+      const coords = trcCoordsRef.current;
+      if (!coords) return;
+      await postTrcLocation({
+        latitude: coords.lat,
+        longitude: coords.lon,
+        nama: localUser?.nama,
+      });
+    };
+
+    const intervalId = setInterval(() => {
+      pushLocation().catch(() => undefined);
+    }, 15000);
+
+    pushLocation().catch(() => undefined);
+
+    return () => clearInterval(intervalId);
+  }, [geoEnabled, localUser?.nama]);
+
   const { loading, error, refetch } = useAsync(async () => {
     const reports = await getReports();
-    setLocalTasks(reports.map((r) => mapReportToTask(r, trcCoords)));
+    setLocalTasks(reports.map((r, idx) => mapReportToTask(r, trcCoords, idx)));
   }, [trcCoords]);
 
   const tasks = localTasks || [];
@@ -139,10 +216,13 @@ export default function TRCDashboard() {
   const laporanBaruCount = tasks.filter((t) => t.status === 'menunggu').length;
   const tugasAktifCount = tasks.filter((t) => t.status === 'penanganan').length;
   const tugasDitolakCount = tasks.filter((t) => t.status === 'ditolak').length;
+  const tugasSelesaiCount = tasks.filter((t) => t.status === 'selesai').length;
+  const tugasRiwayatCount = tugasDitolakCount + tugasSelesaiCount;
 
   const filteredTasks = tasks.filter((t) => {
     if (activeTab === 'baru') return t.status === 'menunggu';
     if (activeTab === 'aktif') return t.status === 'penanganan';
+    if (activeTab === 'riwayat') return t.status === 'selesai' || t.status === 'ditolak';
     return t.status === 'ditolak';
   });
 
@@ -179,7 +259,7 @@ export default function TRCDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
-      <TRCNavbar profile={mockTrcProfile} />
+      <TRCNavbar profile={localUser || mockTrcProfile} />
 
       <main className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-4 py-6">
 
@@ -194,7 +274,7 @@ export default function TRCDashboard() {
               <p className="text-slate-500 text-sm">
                 Lokasi: {trcCoords
                   ? `${trcCoords.lat.toFixed(5)}, ${trcCoords.lon.toFixed(5)}`
-                  : (mockTrcProfile.lokasi || 'Kec. Tawang')}
+                  : (localUser?.alamat || 'Lokasi belum tersedia')}
               </p>
             </div>
           </div>
@@ -229,6 +309,7 @@ export default function TRCDashboard() {
           {[
             { id: 'baru', label: 'Laporan Baru (Validasi)', count: laporanBaruCount, activeClass: 'text-slate-900', barClass: 'bg-slate-900' },
             { id: 'aktif', label: 'Tugas Aktif (Penanganan)', count: tugasAktifCount, activeClass: 'text-blue-600', barClass: 'bg-blue-600' },
+            { id: 'riwayat', label: 'Riwayat', count: tugasRiwayatCount, activeClass: 'text-slate-700', barClass: 'bg-slate-700' },
           ].map(({ id, label, count, activeClass, barClass }) => (
             <button
               key={id}
@@ -257,12 +338,12 @@ export default function TRCDashboard() {
               ? 'Tidak Ada Laporan Baru'
               : activeTab === 'aktif'
                 ? 'Tidak Ada Tugas Aktif'
-                : 'Tidak Ada Tugas Ditolak'}
+                : 'Tidak Ada Riwayat'}
             description={activeTab === 'baru'
               ? 'Semua laporan masuk sudah divalidasi.'
               : activeTab === 'aktif'
                 ? 'Belum ada tugas aktif saat ini.'
-                : 'Belum ada laporan yang ditolak.'}
+                : 'Belum ada laporan selesai atau hoax.'}
           />
         )}
 

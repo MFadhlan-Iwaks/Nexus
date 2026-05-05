@@ -74,7 +74,10 @@ exports.updateProgressLaporan = async (req, res) => {
     // 2. Simpan ke Histori Sitrep jika ada pesan situasi
     if (pesan_situasi) {
       await pool.query(
-        `INSERT INTO sitrep_laporan (id_laporan, id_user_trc, pesan_situasi) VALUES ($1, $2, $3)`,
+        `INSERT INTO sitrep_laporan (id_laporan, id_user_trc, pesan_situasi)
+         SELECT l.id_laporan, $2, $3
+         FROM laporan_bencana l
+         WHERE l.id_laporan = $1`,
         [id_laporan, id_user_trc, pesan_situasi]
       );
     }
@@ -87,18 +90,37 @@ exports.updateProgressLaporan = async (req, res) => {
 
 exports.getAllLaporan = async (req, res) => {
   try {
-    // Kita lakukan JOIN dengan tabel users agar TRC tahu nama & No HP pelapor
+    // Join user pelapor + validasi TRC terakhir + sitrep terakhir
     const query = `
-            SELECT l.id_laporan, l.kategori_bencana, l.deskripsi_kejadian, l.status, 
-              l.waktu_laporan, l.bukti_visual, l.fase_penanganan, l.foto_progress, l.foto_validasi,
+      SELECT l.id_laporan, l.kategori_bencana, l.deskripsi_kejadian, l.status,
+             l.waktu_laporan, l.bukti_visual, l.fase_penanganan, l.foto_progress,
+             l.keterangan_validasi, l.foto_validasi,
              ST_Y(l.koordinat::geometry) AS latitude,
              ST_X(l.koordinat::geometry) AS longitude,
-             u.nama_lengkap, u.no_hp
+             u.nama_lengkap, u.no_hp,
+             v.id_user_trc, v.skala_darurat, v.waktu_validasi,
+             ut.nama_lengkap AS nama_trc,
+             s.pesan_situasi, s.waktu_update
       FROM laporan_bencana l
-      JOIN users u ON l.id_user = u.id_user
+      LEFT JOIN users u ON l.id_user = u.id_user
+      LEFT JOIN LATERAL (
+        SELECT id_user_trc, skala_darurat, waktu_validasi
+        FROM validasi_trc
+        WHERE id_laporan = l.id_laporan
+        ORDER BY waktu_validasi DESC
+        LIMIT 1
+      ) v ON true
+      LEFT JOIN users ut ON ut.id_user = v.id_user_trc
+      LEFT JOIN LATERAL (
+        SELECT pesan_situasi, waktu_update
+        FROM sitrep_laporan
+        WHERE id_laporan = l.id_laporan
+        ORDER BY waktu_update DESC
+        LIMIT 1
+      ) s ON true
       ORDER BY l.waktu_laporan DESC;
     `;
-    
+
     const result = await pool.query(query);
     res.status(200).json({ data: result.rows });
   } catch (err) {
@@ -131,13 +153,15 @@ exports.validasiLaporan = async (req, res) => {
     await pool.query(
       `UPDATE laporan_bencana 
        SET status = $1, fase_penanganan = $2, keterangan_validasi = $3, foto_validasi = $4
-       WHERE id_laporan = $5`,
+      WHERE id_laporan = $5`,
       [status_baru, fase_baru, keterangan || null, foto_validasi, id_laporan]
     );
 
     await pool.query(
       `INSERT INTO validasi_trc (id_laporan, id_user_trc, skala_darurat, waktu_validasi)
-       VALUES ($1, $2, $3, NOW())`,
+       SELECT l.id_laporan, $2, $3, NOW()
+       FROM laporan_bencana l
+      WHERE l.id_laporan = $1`,
       [id_laporan, id_user_trc, skala_darurat || null]
     );
 

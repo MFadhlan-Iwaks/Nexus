@@ -66,9 +66,25 @@ exports.createFaskes = async (req, res) => {
       point ? point.lat : null,
     ]);
 
+    const created = result.rows[0];
+
+    await pool.query(
+      `INSERT INTO faskes_riwayat (id_faskes, id_user_operator, id_instansi, nama_item, aksi, kapasitas_sebelum, kapasitas_sesudah, unit, status)
+       VALUES ($1, $2, $3, $4, 'add', $5, $6, $7, 'Sukses')`,
+      [
+        created.id_faskes,
+        created.id_user_operator,
+        created.id_instansi,
+        created.nama_instansi_medis,
+        null,
+        created.kapasitas_tersedia,
+        created.unit,
+      ]
+    );
+
     res.status(201).json({
       message: 'Faskes berhasil ditambahkan.',
-      data: result.rows[0],
+      data: created,
     });
   } catch (err) {
     console.error(err.message);
@@ -97,6 +113,17 @@ exports.updateFaskes = async (req, res) => {
                 ST_X(koordinat::geometry) AS longitude;
     `;
 
+    const prev = await pool.query(
+      'SELECT id_faskes, id_instansi, id_user_operator, nama_instansi_medis, unit, kapasitas_tersedia FROM fasilitas_kesehatan WHERE id_faskes = $1',
+      [id]
+    );
+
+    if (prev.rows.length === 0) {
+      return res.status(404).json({ message: 'Faskes tidak ditemukan.' });
+    }
+
+    const prevRow = prev.rows[0];
+
     const result = await pool.query(query, [
       kapasitas_tersedia !== undefined ? Number(kapasitas_tersedia) : null,
       point ? point.lon : null,
@@ -104,13 +131,25 @@ exports.updateFaskes = async (req, res) => {
       id,
     ]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Faskes tidak ditemukan.' });
-    }
+    const updated = result.rows[0];
+
+    await pool.query(
+      `INSERT INTO faskes_riwayat (id_faskes, id_user_operator, id_instansi, nama_item, aksi, kapasitas_sebelum, kapasitas_sesudah, unit, status)
+       VALUES ($1, $2, $3, $4, 'update', $5, $6, $7, 'Sukses')`,
+      [
+        updated.id_faskes,
+        prevRow.id_user_operator,
+        updated.id_instansi,
+        updated.nama_instansi_medis,
+        prevRow.kapasitas_tersedia,
+        updated.kapasitas_tersedia,
+        updated.unit,
+      ]
+    );
 
     res.status(200).json({
       message: 'Faskes berhasil diperbarui.',
-      data: result.rows[0],
+      data: updated,
     });
   } catch (err) {
     console.error(err.message);

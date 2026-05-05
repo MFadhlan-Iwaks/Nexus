@@ -1,30 +1,55 @@
 // src/services/userService.js — pakai shared store
-import { getUsersState, patchUser } from '@/data/store';
+import { getToken } from '@/services/authService';
 
-const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+function normalizeUser(item) {
+  return {
+    id: item.id_user,
+    nama: item.nama_lengkap,
+    role: String(item.role || '').toLowerCase(),
+    no_hp: item.no_hp,
+    alamat: item.alamat,
+    wilayah: item.nama_instansi || item.id_instansi || '-',
+    created_at: item.created_at || item.createdAt || null,
+  };
+}
 
 export async function getUsers() {
-  await simulateDelay();
-  return getUsersState();
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil user.');
+  return (data.data ?? []).map(normalizeUser);
 }
 
 export async function updateUserRole(id, role) {
-  await simulateDelay(200);
-  patchUser(id, { role });
-  return { message: 'Role berhasil diubah.', id, role };
-}
-
-export async function toggleUserStatus(id) {
-  await simulateDelay(200);
-  const users = getUsersState();
-  const user = users.find((u) => u.id === id);
-  if (!user) throw new Error('User tidak ditemukan.');
-  const newAktif = !(user.aktif ?? user.active ?? true);
-  patchUser(id, { aktif: newAktif, active: newAktif });
-  return { message: `User berhasil ${newAktif ? 'diaktifkan' : 'dinonaktifkan'}.`, id };
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/admin/users/${id}/role`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ role }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengubah role.');
+  return { message: data.message, id, role: data.data?.role || role };
 }
 
 export async function deleteUser(id) {
-  await simulateDelay(200);
-  return { message: 'User berhasil dihapus.', id };
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal menghapus user.');
+  return { message: data.message, id };
 }

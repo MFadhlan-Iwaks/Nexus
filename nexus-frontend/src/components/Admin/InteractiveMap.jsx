@@ -32,6 +32,7 @@ export default function InteractiveMap({
   disasterReports = [],
   logisticPoints = [],
   faskesPoints = [],
+  trcPoints = [],
   mapCenter = [-7.3274, 108.2207],
   mapZoom = 12,
   mapRadius = 12000,
@@ -43,6 +44,8 @@ export default function InteractiveMap({
   const getReportColor = (report) => {
     if (report.status === 'ditolak') return '#ef4444';
     if (report.status === 'menunggu' || report.status === 'menunggu_admin') return '#f59e0b';
+    if (report.status === 'diproses') return '#3b82f6';
+    if (report.status === 'selesai') return '#10b981';
     if (report.emergencyScale === 'tinggi') return '#dc2626';
     if (report.emergencyScale === 'sedang') return '#f97316';
     return '#2563eb';
@@ -125,6 +128,21 @@ export default function InteractiveMap({
                 <h3 className="font-bold text-sm text-slate-800">{point.label}</h3>
                 <p className="text-xs text-slate-600">Kapasitas: {point.capacity}</p>
                 <p className="text-xs text-slate-600">Status: <span className="font-bold">{point.status}</span></p>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+
+        {/* Marker TRC Aktif */}
+        {trcPoints.filter((point) => point.status === 'aktif' && Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
+          <CircleMarker key={`${point.id ?? 'trc'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: '#06b6d4', fillColor: '#06b6d4', fillOpacity: 0.9 }}>
+            <Popup>
+              <div className="p-1">
+                <h3 className="font-bold text-sm text-slate-800">TRC Aktif</h3>
+                <p className="text-xs text-slate-600">Petugas: {point.name || '-'}</p>
+                {point.reportId && (
+                  <p className="text-xs text-slate-600">Laporan: {point.reportId}</p>
+                )}
               </div>
             </Popup>
           </CircleMarker>

@@ -10,18 +10,51 @@ import EmergencyCTA from '@/components/masyarakat/EmergencyCTA';
 import BroadcastBanner from '@/components/masyarakat/BroadcastBanner';
 import RiwayatLaporan from '@/components/masyarakat/RiwayatLaporan';
 import { getLocalUser } from '@/services/authService';
+import { LoadingState } from '@/components/common/PageStates';
 
 export default function DashboardMasyarakatPage() {
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(null);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     const localUser = getLocalUser();
-    if (localUser) {
-      setUser(localUser);
+    const role = String(localUser?.role || '').toLowerCase();
+    if (!localUser) {
+      document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
+      document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
+      setIsAuthorized(false);
+      router.replace('/auth');
+      return;
     }
-  }, []);
+    if (role !== 'masyarakat') {
+      const target = role === 'admin'
+        ? '/admin/dashboard'
+        : role === 'operator'
+          ? '/operator/dashboard'
+          : role === 'trc'
+            ? '/trc/dashboard'
+            : '/auth';
+      setIsAuthorized(false);
+      router.replace(target);
+      return;
+    }
+    setUser(localUser);
+    setIsAuthorized(true);
+  }, [router]);
 
+  if (isAuthorized === null) {
+    return <LoadingState message="Memeriksa akses..." />;
+  }
+
+  if (isAuthorized === false) {
+    return <LoadingState message="Mengalihkan..." />;
+  }
+
+  return <DashboardMasyarakatContent user={user} />;
+}
+
+function DashboardMasyarakatContent({ user }) {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20">
       <NavbarMasyarakat userName={user?.nama} />

@@ -64,7 +64,49 @@ export async function getReports() {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Gagal mengambil laporan.');
-  return data.data ?? [];
+  const baseUrl = API_BASE.replace(/\/+api\/?$/, '');
+  return (data.data ?? []).map((row) => {
+    const statusRaw = String(row.status || '').toLowerCase();
+    const statusMap = {
+      menunggu: 'menunggu_admin',
+      diproses: 'diproses',
+      selesai: 'selesai',
+      ditolak: 'ditolak',
+    };
+
+    const buktiVisual = row.bukti_visual ? `${baseUrl}/uploads/${row.bukti_visual}` : null;
+    const fotoValidasi = row.foto_validasi ? `${baseUrl}/uploads/${row.foto_validasi}` : null;
+    const fotoProgress = row.foto_progress ? `${baseUrl}/uploads/${row.foto_progress}` : null;
+
+    const statusValidasi = statusRaw === 'ditolak' ? 'hoax' : row.skala_darurat ? 'valid' : '-';
+
+    return {
+      id: row.id_laporan,
+      status: statusMap[statusRaw] || statusRaw || 'menunggu_admin',
+      masyarakat: {
+        nama: row.nama_lengkap,
+        contact: row.no_hp,
+        kategori: row.kategori_bencana,
+        deskripsi: row.deskripsi_kejadian,
+        waktu_lapor: row.waktu_laporan,
+        foto: buktiVisual,
+        latitude: row.latitude,
+        longitude: row.longitude,
+      },
+      trc: {
+        id: row.id_user_trc || null,
+        petugas: row.nama_trc || null,
+        status_validasi: statusValidasi,
+        skala_kedaruratan: row.skala_darurat || null,
+        fase_penanganan: row.fase_penanganan || null,
+        catatan: row.pesan_situasi || row.keterangan_validasi || null,
+        waktu_validasi: row.waktu_validasi || null,
+        waktu_update: row.waktu_update || null,
+        foto_bukti: fotoValidasi,
+        foto_progress: fotoProgress,
+      },
+    };
+  });
 }
 
 /**

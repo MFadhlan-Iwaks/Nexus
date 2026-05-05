@@ -60,7 +60,7 @@ export default function NotificationBell({
   };
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
+    <div ref={wrapperRef} className={`relative z-[1000] ${className}`}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -77,7 +77,7 @@ export default function NotificationBell({
       </button>
 
       {isOpen && (
-        <div className={`absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-60 overflow-hidden ${panelClassName}`}>
+        <div className={`absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-[1001] overflow-hidden ${panelClassName}`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900">Notifikasi</h4>
             <button

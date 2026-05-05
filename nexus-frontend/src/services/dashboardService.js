@@ -4,40 +4,22 @@
 // Semua data dibaca dari shared store agar up-to-date
 // ============================================================
 
-import { getReportsState, getTrcUnitsState } from '@/data/store';
-import { getLogisticSummary } from '@/services/logisticService';
-import { getFacilitySummary } from '@/services/facilityService';
+import { getToken } from '@/services/authService';
 
-const simulateDelay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 /**
  * Ambil statistik ringkasan dashboard admin dari shared store.
  */
 export async function getDashboardStats() {
-  await simulateDelay();
-  const reports = getReportsState();
-  const trcUnits = getTrcUnitsState();
-
-  const totalLaporan = reports.length;
-  const menunggu = reports.filter((r) => r.status === 'menunggu_admin').length;
-  const diproses = reports.filter((r) => r.status === 'diproses').length;
-  const selesai = reports.filter((r) => r.status === 'selesai').length;
-  const ditolak = reports.filter((r) => r.status === 'ditolak').length;
-  const totalTrcAktif = trcUnits.filter((t) => t.status === 'aktif').length;
-
-  const logisticSummary = await getLogisticSummary();
-  const faskesSummary = await getFacilitySummary();
-
-  return {
-    totalLaporan,
-    menunggu,
-    diproses,
-    selesai,
-    ditolak,
-    totalTrcAktif,
-    totalLogistikInstansi: logisticSummary.length,
-    totalFaskesInstansi: faskesSummary.length,
-  };
+  const token = getToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/admin/stats`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil statistik dashboard.');
+  return data.data;
 }
 
 /**

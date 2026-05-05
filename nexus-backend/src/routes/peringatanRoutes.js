@@ -11,4 +11,8 @@ router.get('/', auth, peringatanController.getPeringatanDini);
 // Hanya bisa diakses jika membawa Token JWT
 router.post('/', auth, peringatanController.createPeringatanDini);
 
+// Endpoint: DELETE /api/peringatan/:id
+// Hanya bisa diakses jika membawa Token JWT
+router.delete('/:id', auth, peringatanController.deletePeringatanDini);
+
 module.exports = router;

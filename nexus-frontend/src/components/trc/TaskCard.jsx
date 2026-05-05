@@ -3,7 +3,8 @@ import { MapPin, Clock, ShieldCheck, Image as ImageIcon, ChevronRight, Navigatio
 export default function TaskCard({ data, onValidate, onDetail, onUpdate, canValidate }) {
   const isMenunggu = data.status === 'menunggu';
   const isPenanganan = data.status === 'penanganan';
-  const displayId = `LAP-${String(data.id).padStart(6, '0')}`;
+  const displayIdValue = data.displayId ?? data.id;
+  const displayId = `LAP-${String(displayIdValue)}`;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col relative">

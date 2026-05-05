@@ -1,16 +1,18 @@
 import { Menu } from 'lucide-react';
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
+import { getLocalUser } from '@/services/authService';
 
 export default function Header({ activeTab, onOpenMenu, activeInstitution }) {
+  const localUser = getLocalUser();
   const operatorDefaultProfile = {
-    name: 'Angga N.',
-    role: 'Operator',
-    id: 'OPR-001',
-    phone: '0833-4455-6677',
-    email: 'operator@nexus.id',
-    instansi: activeInstitution || 'Instansi Aktif',
-    address: `Posko ${activeInstitution || 'Instansi Aktif'}`
+    name: localUser?.nama || 'Operator',
+    role: localUser?.role || 'Operator',
+    id: localUser?.id || 'OPR-XXX',
+    phone: localUser?.no_hp || '-',
+    email: localUser?.email || '-',
+    instansi: activeInstitution || localUser?.instansi || 'Instansi Aktif',
+    address: localUser?.alamat || `Posko ${activeInstitution || 'Instansi Aktif'}`
   };
 
   const operatorNotifications = [

@@ -1,8 +1,8 @@
 // src/components/admin/ManajemenPengguna.jsx
 import { useMemo, useState } from 'react';
-import { Search, UserCheck, UserX, Users } from 'lucide-react';
+import { Search, Trash2, Users } from 'lucide-react';
 
-export default function ManajemenPengguna({ users = [], onRoleChange, onToggleUser }) {
+export default function ManajemenPengguna({ users = [], onRoleChange, onDeleteUser }) {
   const [roleFilter, setRoleFilter] = useState('semua');
   const [query, setQuery] = useState('');
 
@@ -13,8 +13,20 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onToggleUs
       const roleMatch = roleFilter === 'semua' || u.role === roleFilter;
       const queryMatch = q === '' || nama.toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
       return roleMatch && queryMatch;
+    }).slice().sort((a, b) => {
+      const aTime = a.created_at || a.createdAt;
+      const bTime = b.created_at || b.createdAt;
+      const aValue = aTime ? new Date(aTime).getTime() : Infinity;
+      const bValue = bTime ? new Date(bTime).getTime() : Infinity;
+      if (aValue !== bValue) return aValue - bValue;
+      const aId = Number(a.id);
+      const bId = Number(b.id);
+      if (Number.isFinite(aId) && Number.isFinite(bId)) return aId - bId;
+      return String(a.id).localeCompare(String(b.id));
     });
   }, [users, roleFilter, query]);
+
+  const formatSequenceId = (index) => String(index + 1).padStart(3, '0');
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300 flex flex-col h-full">
@@ -43,34 +55,27 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onToggleUs
       {/* AREA TABEL */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-left">
-          <thead className="bg-white sticky top-0 z-10">
+          <thead className="bg-white sticky top-0 z-0">
             <tr className="text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
               <th className="p-4 font-semibold">ID / Nama Pengguna</th>
               <th className="p-4 font-semibold">Role</th>
               <th className="p-4 font-semibold">Wilayah / Unit</th>
-              <th className="p-4 font-semibold">Status Akses</th>
               <th className="p-4 font-semibold text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm">
-            {filteredUsers.map((item) => {
+            {filteredUsers.map((item, index) => {
               // Support field lama (name, active, region) dan baru (nama, aktif, wilayah)
               const namaUser = item.nama || item.name || '-';
-              const isAktif = item.aktif ?? item.active ?? true;
               const wilayah = item.wilayah || item.region || '-';
               return (
                 <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4">
                     <p className="font-bold text-slate-800">{namaUser}</p>
-                    <p className="text-xs text-slate-400 font-mono">{item.id}</p>
+                    <p className="text-xs text-slate-400 font-mono">{formatSequenceId(index)}</p>
                   </td>
                   <td className="p-4 text-slate-600 capitalize">{item.role}</td>
                   <td className="p-4 text-slate-600 text-xs">{wilayah}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${isAktif ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                      {isAktif ? <UserCheck size={12} /> : <UserX size={12} />} {isAktif ? 'Aktif' : 'Nonaktif'}
-                    </span>
-                  </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2">
                       <select
@@ -83,8 +88,11 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onToggleUs
                         <option value="operator">Operator</option>
                         <option value="admin">Admin</option>
                       </select>
-                      <button onClick={() => onToggleUser?.(item.id)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isAktif ? 'text-red-600 border border-red-200 hover:bg-red-50' : 'text-emerald-600 border border-emerald-200 hover:bg-emerald-50'}`}>
-                        {isAktif ? 'Nonaktifkan' : 'Aktifkan'}
+                      <button
+                        onClick={() => onDeleteUser?.(item.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors text-red-600 border border-red-200 hover:bg-red-50 inline-flex items-center gap-1"
+                      >
+                        <Trash2 size={12} /> Hapus
                       </button>
                     </div>
                   </td>
@@ -93,7 +101,7 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onToggleUs
             })}
             {filteredUsers.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-sm text-slate-500">Tidak ada user yang sesuai filter.</td>
+                <td colSpan={4} className="p-6 text-center text-sm text-slate-500">Tidak ada user yang sesuai filter.</td>
               </tr>
             )}
 

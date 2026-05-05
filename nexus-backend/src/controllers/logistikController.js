@@ -66,9 +66,25 @@ exports.createLogistik = async (req, res) => {
       point ? point.lat : null,
     ]);
 
+    const created = result.rows[0];
+
+    await pool.query(
+      `INSERT INTO logistik_riwayat (id_logistik, id_user_operator, id_instansi, nama_item, aksi, stok_sebelum, stok_sesudah, unit, status)
+       VALUES ($1, $2, $3, $4, 'add', $5, $6, $7, 'Sukses')`,
+      [
+        created.id_logistik,
+        created.id_user_operator,
+        created.id_instansi,
+        created.nama_barang,
+        null,
+        created.jumlah_stok,
+        created.unit,
+      ]
+    );
+
     res.status(201).json({
       message: 'Logistik berhasil ditambahkan.',
-      data: result.rows[0],
+      data: created,
     });
   } catch (err) {
     console.error(err.message);
@@ -97,6 +113,17 @@ exports.updateLogistik = async (req, res) => {
                 ST_X(koordinat::geometry) AS longitude;
     `;
 
+    const prev = await pool.query(
+      'SELECT id_logistik, id_instansi, id_user_operator, nama_barang, unit, jumlah_stok FROM logistik WHERE id_logistik = $1',
+      [id]
+    );
+
+    if (prev.rows.length === 0) {
+      return res.status(404).json({ message: 'Logistik tidak ditemukan.' });
+    }
+
+    const prevRow = prev.rows[0];
+
     const result = await pool.query(query, [
       jumlah_stok !== undefined ? Number(jumlah_stok) : null,
       point ? point.lon : null,
@@ -104,13 +131,25 @@ exports.updateLogistik = async (req, res) => {
       id,
     ]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Logistik tidak ditemukan.' });
-    }
+    const updated = result.rows[0];
+
+    await pool.query(
+      `INSERT INTO logistik_riwayat (id_logistik, id_user_operator, id_instansi, nama_item, aksi, stok_sebelum, stok_sesudah, unit, status)
+       VALUES ($1, $2, $3, $4, 'update', $5, $6, $7, 'Sukses')`,
+      [
+        updated.id_logistik,
+        prevRow.id_user_operator,
+        updated.id_instansi,
+        updated.nama_barang,
+        prevRow.jumlah_stok,
+        updated.jumlah_stok,
+        updated.unit,
+      ]
+    );
 
     res.status(200).json({
       message: 'Logistik berhasil diperbarui.',
-      data: result.rows[0],
+      data: updated,
     });
   } catch (err) {
     console.error(err.message);

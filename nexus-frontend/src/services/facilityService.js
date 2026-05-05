@@ -135,19 +135,16 @@ export async function updateFacility(id, data) {
  * 🟡 Mock — TODO: GET /api/faskes/summary
  */
 export async function getFacilitySummary() {
-  await simulateDelay();
-  const items = getFaskesState().map(toFaskesView);
-  // Kelompokkan per institusi
-  const grouped = items.reduce((acc, item) => {
-    const key = item.institusi || 'Umum';
-    if (!acc[key]) acc[key] = { institution: key, totalUnits: 0, availableCapacity: 0, id: key };
-    acc[key].totalUnits += 1;
-    acc[key].availableCapacity += item.stok || 0;
-    return acc;
-  }, {});
-  return Object.values(grouped).map((g) => ({
+  const token = getToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/admin/faskes/summary`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil ringkasan faskes.');
+  return (data.data ?? []).map((g) => ({
     ...g,
-    status: getFaskesStatus(g.availableCapacity),
+    status: g.status || getFaskesStatus(g.availableCapacity || 0),
     updatedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
   }));
 }

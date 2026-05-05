@@ -15,6 +15,7 @@ function normalizeUser(user, fallback = {}) {
     role: user.role ?? fallback.role ?? null,
     no_hp: user.no_hp ?? fallback.no_hp ?? null,
     alamat: user.alamat ?? fallback.alamat ?? null,
+    id_instansi: user.id_instansi ?? fallback.id_instansi ?? null,
   };
 }
 
@@ -81,6 +82,12 @@ export function getToken() {
 export function saveSession(token, user) {
   localStorage.setItem('token', token);
   localStorage.setItem('user', JSON.stringify(user));
+  if (token) {
+    document.cookie = `token=${encodeURIComponent(String(token))}; path=/; samesite=lax`;
+  }
+  if (user?.role) {
+    document.cookie = `role=${encodeURIComponent(String(user.role))}; path=/; samesite=lax`;
+  }
 }
 
 /**
@@ -89,6 +96,8 @@ export function saveSession(token, user) {
 export function clearSession() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
+  document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
 }
 
 /**

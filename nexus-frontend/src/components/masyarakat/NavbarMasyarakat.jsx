@@ -7,19 +7,21 @@ import { useRouter } from 'next/navigation';
 import NotificationBell from '@/components/masyarakat/NotificationBell';
 import UserProfileDropdown from '@/components/masyarakat/UserProfileDropdown';
 import { mockMasyarakatNotifications } from '@/data/mockData';
-import { clearSession } from '@/services/authService';
+import { clearSession, getLocalUser } from '@/services/authService';
 
 export default function NavbarMasyarakat({ userName }) {
   const router = useRouter();
 
+  const localUser = getLocalUser();
+
   const masyarakatProfile = {
-    nama: userName || 'Masyarakat',
-    role: 'Masyarakat',
-    id: 'MYS-XXX',
-    no_hp: '-',
-    email: '-',
-    alamat: '-',
-    instansi: 'Warga',
+    nama: localUser?.nama || userName || 'Masyarakat',
+    role: localUser?.role || 'Masyarakat',
+    id: localUser?.id || 'MYS-XXX',
+    no_hp: localUser?.no_hp || '-',
+    email: localUser?.email || '-',
+    alamat: localUser?.alamat || '-',
+    instansi: localUser?.instansi || 'Warga',
   };
 
   const handleLogout = () => {

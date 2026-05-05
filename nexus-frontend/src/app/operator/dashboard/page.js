@@ -3,7 +3,8 @@
 // src/app/operator/dashboard/page.js
 // Operator dashboard — logistik dari logisticService, faskes dari facilityService
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/operator/Sidebar';
 import Header from '@/components/operator/Header';
 import Summary from '@/components/operator/Summary';
@@ -13,7 +14,7 @@ import ModalAddData from '@/components/operator/ModalAddData';
 import ModalUpdateData from '@/components/operator/ModalUpdateData';
 import { LoadingState, ErrorState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
-import { mockOperatorProfile } from '@/data/mockData';
+import { getLocalUser } from '@/services/authService';
 
 // Logistik
 import {
@@ -34,8 +35,49 @@ import {
 } from '@/services/facilityService';
 
 export default function OperatorDashboardPage() {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(null);
+
+  useEffect(() => {
+    const user = getLocalUser();
+    const role = String(user?.role || '').toLowerCase();
+    if (!user) {
+      document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
+      document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
+      setIsAuthorized(false);
+      router.replace('/auth');
+      return;
+    }
+    if (role !== 'operator') {
+      const target = role === 'admin'
+        ? '/admin/dashboard'
+        : role === 'trc'
+          ? '/trc/dashboard'
+          : role === 'masyarakat'
+            ? '/masyarakat/dashboard'
+            : '/auth';
+      setIsAuthorized(false);
+      router.replace(target);
+      return;
+    }
+    setIsAuthorized(true);
+  }, [router]);
+
+  if (isAuthorized === null) {
+    return <LoadingState message="Memeriksa akses..." />;
+  }
+
+  if (isAuthorized === false) {
+    return <LoadingState message="Mengalihkan..." />;
+  }
+
+  return <OperatorDashboardContent />;
+}
+
+function OperatorDashboardContent() {
   const [activeTab, setActiveTab] = useState('beranda');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const localUser = getLocalUser();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -49,31 +91,58 @@ export default function OperatorDashboardPage() {
   const [stockHistory, setStockHistory] = useState(null);
 
   // Fetch awal — fungsi stabil agar tidak trigger re-render loop
-  const { loading: loadingLog, error: errorLog } = useAsync(getLogistics);
-  const { loading: loadingFsk, error: errorFsk } = useAsync(getFacilities);
-  const { loading: loadingHist, error: errorHist } = useAsync(getStockHistory);
+  const { data: logisticsData, loading: loadingLog, error: errorLog } = useAsync(getLogistics);
+  const { data: faskesData, loading: loadingFsk, error: errorFsk } = useAsync(getFacilities);
+  const { data: historyData, loading: loadingHist, error: errorHist } = useAsync(
+    () => (activeTab === 'riwayat' ? getStockHistory() : []),
+    [activeTab]
+  );
 
   // Inisialisasi state lokal dari data pertama kali
   useEffect(() => {
-    getLogistics().then(setLogistics).catch(() => {});
-  }, []);
+    if (logisticsData) setLogistics(logisticsData);
+  }, [logisticsData]);
 
   useEffect(() => {
-    getFacilities().then(setFaskes).catch(() => {});
-  }, []);
+    if (faskesData) setFaskes(faskesData);
+  }, [faskesData]);
 
   useEffect(() => {
-    getStockHistory().then(setStockHistory).catch(() => {});
-  }, []);
+    if (historyData) setStockHistory(historyData);
+  }, [historyData]);
 
-  const isLoading = loadingLog || loadingFsk || loadingHist;
-  const firstError = errorLog || errorFsk || errorHist;
+  const isLoading = loadingLog || loadingFsk || (activeTab === 'riwayat' && loadingHist);
+  const firstError = errorLog || errorFsk || (activeTab === 'riwayat' ? errorHist : null);
 
   const addToHistory = useCallback((entry) => {
-    const full = { id: `hist-${Date.now()}`, waktu: new Date().toISOString(), ...entry };
+    const full = {
+      id: `hist-${Date.now()}`,
+      waktu: new Date().toISOString(),
+      operator: entry.operator,
+      nama_item: entry.itemName,
+      aksi: entry.action,
+      tipe: entry.resourceType,
+      stok_sebelum: entry.previousStock ?? null,
+      stok_sesudah: entry.newStock ?? null,
+      unit: entry.unit,
+      status: entry.status,
+    };
     recordStockHistory(full);
     setStockHistory((prev) => [full, ...(prev || [])]);
   }, []);
+
+  const historyEntries = useMemo(() => (stockHistory || []).map((entry) => ({
+    id: entry.id,
+    time: entry.time || entry.waktu,
+    operator: entry.operator || '-',
+    action: entry.action || entry.aksi || 'update',
+    resourceType: entry.resourceType || entry.tipe || 'logistik',
+    itemName: entry.itemName || entry.nama_item || '-',
+    previousStock: entry.previousStock ?? entry.stok_sebelum ?? null,
+    newStock: entry.newStock ?? entry.stok_sesudah ?? null,
+    unit: entry.unit || '-',
+    status: entry.status || 'Sukses',
+  })), [stockHistory]);
 
   // ─── Tambah Data ─────────────────────────────────────────
 
@@ -83,27 +152,33 @@ export default function OperatorDashboardPage() {
         const { item } = await createFacility({
           ...newItem,
           stok: Number(newItem.stok),
-          institusi: mockOperatorProfile.instansi,
         });
         setFaskes((prev) => [item, ...(prev || [])]);
         addToHistory({
-          operator: mockOperatorProfile.nama,
-          nama_item: item.nama,
-          aksi: 'add', tipe: 'faskes',
-          stok_sebelum: null, stok_sesudah: item.stok, unit: item.unit, status: 'Sukses',
+          operator: localUser?.nama || 'Operator',
+          itemName: item.nama,
+          action: 'add',
+          resourceType: 'faskes',
+          previousStock: null,
+          newStock: item.stok,
+          unit: item.unit,
+          status: 'Sukses',
         });
       } else {
         const { item } = await createLogistic({
           ...newItem,
           stok: Number(newItem.stok),
-          institusi: mockOperatorProfile.instansi,
         });
         setLogistics((prev) => [item, ...(prev || [])]);
         addToHistory({
-          operator: mockOperatorProfile.nama,
-          nama_item: item.nama,
-          aksi: 'add', tipe: 'logistik',
-          stok_sebelum: null, stok_sesudah: item.stok, unit: item.unit, status: 'Sukses',
+          operator: localUser?.nama || 'Operator',
+          itemName: item.nama,
+          action: 'add',
+          resourceType: 'logistik',
+          previousStock: null,
+          newStock: item.stok,
+          unit: item.unit,
+          status: 'Sukses',
         });
       }
     } catch (err) {
@@ -123,10 +198,14 @@ export default function OperatorDashboardPage() {
           prev?.map((item) => {
             if (item.id !== id) return item;
             addToHistory({
-              operator: mockOperatorProfile.nama,
-              nama_item: item.nama,
-              aksi: 'update', tipe: 'faskes',
-              stok_sebelum: item.stok, stok_sesudah: normalizedStock, unit: item.unit, status: 'Sukses',
+              operator: localUser?.nama || 'Operator',
+              itemName: item.nama,
+              action: 'update',
+              resourceType: 'faskes',
+              previousStock: item.stok,
+              newStock: normalizedStock,
+              unit: item.unit,
+              status: 'Sukses',
             });
             return { ...item, stok: normalizedStock };
           })
@@ -138,10 +217,14 @@ export default function OperatorDashboardPage() {
           prev?.map((item) => {
             if (item.id !== id) return item;
             addToHistory({
-              operator: mockOperatorProfile.nama,
-              nama_item: item.nama,
-              aksi: 'update', tipe: 'logistik',
-              stok_sebelum: item.stok, stok_sesudah: normalizedStock, unit: item.unit, status: 'Sukses',
+              operator: localUser?.nama || 'Operator',
+              itemName: item.nama,
+              action: 'update',
+              resourceType: 'logistik',
+              previousStock: item.stok,
+              newStock: normalizedStock,
+              unit: item.unit,
+              status: 'Sukses',
             });
             return { ...item, stok: normalizedStock };
           })
@@ -177,7 +260,7 @@ export default function OperatorDashboardPage() {
       case 'beranda':
         return (
           <Summary
-            activeInstitution={mockOperatorProfile.instansi}
+            activeInstitution={localUser?.id_instansi}
             faskesItems={faskesWithStatus}
             logisticItems={logisticsWithStatus}
           />
@@ -198,12 +281,12 @@ export default function OperatorDashboardPage() {
       case 'riwayat':
         return (
           <HistoryTable
-            entries={stockHistory || []}
-            activeInstitution={mockOperatorProfile.instansi}
+            entries={historyEntries}
+            activeInstitution={localUser?.id_instansi}
           />
         );
       default:
-        return <Summary activeInstitution={mockOperatorProfile.instansi} faskesItems={[]} logisticItems={[]} />;
+        return <Summary activeInstitution={localUser?.id_instansi} faskesItems={[]} logisticItems={[]} />;
     }
   };
 
@@ -214,14 +297,14 @@ export default function OperatorDashboardPage() {
         setActiveTab={setActiveTab}
         isOpen={isMobileMenuOpen}
         setIsOpen={setIsMobileMenuOpen}
-        activeInstitution={mockOperatorProfile.instansi}
+        activeInstitution={localUser?.id_instansi}
       />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden w-full relative">
         <Header
           activeTab={activeTab}
           onOpenMenu={() => setIsMobileMenuOpen(true)}
-          activeInstitution={mockOperatorProfile.instansi}
+          activeInstitution={localUser?.id_instansi}
         />
 
         <div className="flex-1 overflow-auto p-4 sm:p-6">

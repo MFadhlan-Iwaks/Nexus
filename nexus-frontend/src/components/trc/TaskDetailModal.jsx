@@ -5,7 +5,8 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
 
   const isMenunggu = task.status === 'menunggu';
   const isPenanganan = task.status === 'penanganan';
-  const displayId = `LAP-${String(task.id).padStart(6, '0')}`;
+  const displayIdValue = task.displayId ?? task.id;
+  const displayId = `LAP-${String(displayIdValue)}`;
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">

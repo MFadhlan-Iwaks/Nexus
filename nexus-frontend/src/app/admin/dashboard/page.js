@@ -2,7 +2,7 @@
 
 // src/app/admin/dashboard/page.js — Refactored: pakai service layer & mockData terpusat
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { ShieldAlert, Megaphone, Activity, LogOut, LayoutDashboard, Users, Boxes, Send, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -11,16 +11,17 @@ import ManajemenPengguna from '@/components/Admin/ManajemenPengguna';
 import ReportDetailModal from '@/components/Admin/ReportDetailModal';
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
-import { LoadingState, ErrorState, EmptyState } from '@/components/common/PageStates';
+import { LoadingState, ErrorState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
 import { getReports } from '@/services/reportService';
-import { getBroadcasts, createBroadcast } from '@/services/broadcastService';
-import { getUsers, updateUserRole, toggleUserStatus } from '@/services/userService';
+import { getBroadcasts, createBroadcast, deleteBroadcast } from '@/services/broadcastService';
+import { getUsers, updateUserRole, deleteUser } from '@/services/userService';
 import { getDashboardStats, getLogisticSummary, getFaskesSummary } from '@/services/dashboardService';
-import {
-  mockAdminProfile, mockAdminNotifications,
-  mockLogisticPoints, mockFaskesPoints,
-} from '@/data/mockData';
+import { getLogistics } from '@/services/logisticService';
+import { getFacilities } from '@/services/facilityService';
+import { getTrcLocations } from '@/services/trcService';
+import { getLocalUser } from '@/services/authService';
+import { mockAdminProfile, mockAdminNotifications } from '@/data/mockData';
 import { formatWaktuRelatif, getStatusBadgeClass, getStatusLabel, getSkalaClass, getLevelBadgeClass, getLogisticStatusClass } from '@/lib/utils';
 
 const MapWithNoSSR = dynamic(() => import('@/components/Admin/InteractiveMap'), {
@@ -45,6 +46,46 @@ const mapPresets = {
 
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(null);
+
+  useEffect(() => {
+    const user = getLocalUser();
+    const role = String(user?.role || '').toLowerCase();
+    if (!user) {
+      document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
+      document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
+      setIsAuthorized(false);
+      router.replace('/auth');
+      return;
+    }
+    if (role !== 'admin') {
+      const target = role === 'operator'
+        ? '/operator/dashboard'
+        : role === 'trc'
+          ? '/trc/dashboard'
+          : role === 'masyarakat'
+            ? '/masyarakat/dashboard'
+            : '/auth';
+      setIsAuthorized(false);
+      router.replace(target);
+      return;
+    }
+    setIsAuthorized(true);
+  }, [router]);
+
+  if (isAuthorized === null) {
+    return <LoadingState message="Memeriksa akses..." />;
+  }
+
+  if (isAuthorized === false) {
+    return <LoadingState message="Mengalihkan..." />;
+  }
+
+  return <AdminExecutiveDashboardContent />;
+}
+
+function AdminExecutiveDashboardContent() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mapScope, setMapScope] = useState('tasikmalaya');
   const [monitoringCircle, setMonitoringCircle] = useState(mapPresets.tasikmalaya);
@@ -55,14 +96,17 @@ export default function AdminExecutiveDashboard() {
 
   // --- Data via services ---
   const { data: reports, loading: loadingReports, error: errorReports, refetch: refetchReports } = useAsync(getReports);
-  const { data: users, loading: loadingUsers } = useAsync(getUsers);
-  const { data: stats, loading: loadingStats } = useAsync(getDashboardStats);
-  const { data: logisticSummary } = useAsync(getLogisticSummary);
-  const { data: faskesSummary } = useAsync(getFaskesSummary);
+  const { data: users, loading: loadingUsers, error: errorUsers, refetch: refetchUsers } = useAsync(getUsers);
+  const { data: stats, loading: loadingStats, error: errorStats, refetch: refetchStats } = useAsync(getDashboardStats);
+  const { data: logisticSummary, error: errorLogisticSummary, refetch: refetchLogisticSummary } = useAsync(getLogisticSummary);
+  const { data: faskesSummary, error: errorFaskesSummary, refetch: refetchFaskesSummary } = useAsync(getFaskesSummary);
+  const { data: logistics } = useAsync(getLogistics);
+  const { data: facilities } = useAsync(getFacilities);
+  const { data: trcLocations } = useAsync(getTrcLocations);
 
   // Local state untuk broadcast history & users (optimistic updates)
   const [broadcastHistory, setBroadcastHistory] = useState(null);
-  const { loading: loadingBc } = useAsync(async () => {
+  const { loading: loadingBc, error: errorBc, refetch: refetchBc } = useAsync(async () => {
     const data = await getBroadcasts();
     setBroadcastHistory(data);
   }, []);
@@ -70,6 +114,18 @@ export default function AdminExecutiveDashboard() {
   const [localUsers, setLocalUsers] = useState(null);
 
   const activeReports = useMemo(() => reports || [], [reports]);
+  const activeReportList = useMemo(() => (
+    activeReports
+      .filter((r) => r.status === 'menunggu_admin' || r.status === 'diproses')
+      .slice()
+      .sort((a, b) => {
+        const aTime = a?.masyarakat?.waktu_lapor ? new Date(a.masyarakat.waktu_lapor).getTime() : 0;
+        const bTime = b?.masyarakat?.waktu_lapor ? new Date(b.masyarakat.waktu_lapor).getTime() : 0;
+        return aTime - bTime;
+      })
+  ), [activeReports]);
+
+  const formatSequenceId = (index) => String(index + 1).padStart(3, '0');
 
   const mapReports = useMemo(() =>
     activeReports.map((r) => ({
@@ -81,6 +137,32 @@ export default function AdminExecutiveDashboard() {
       phase: r.trc?.fase_penanganan || '-',
     })), [activeReports]);
 
+  const mapLogistics = useMemo(() =>
+    (logistics || []).map((item) => ({
+      id: item.id,
+      label: item.nama,
+      coordinates: [item.latitude, item.longitude],
+      stock: item.stok,
+      status: item.stok !== undefined ? (item.stok <= 0 ? 'habis' : item.stok <= 100 ? 'menipis' : 'aman') : 'aman',
+    })), [logistics]);
+
+  const mapFaskes = useMemo(() =>
+    (facilities || []).map((item) => ({
+      id: item.id,
+      label: item.nama_fasilitas || item.nama,
+      coordinates: [item.latitude, item.longitude],
+      capacity: item.kapasitas_tersedia ?? item.stok,
+      status: item.kapasitas_tersedia !== undefined ? (item.kapasitas_tersedia <= 0 ? 'penuh' : item.kapasitas_tersedia <= 5 ? 'hampir penuh' : 'tersedia') : 'tersedia',
+    })), [facilities]);
+
+  const trcPoints = useMemo(() =>
+    (trcLocations || []).map((location) => ({
+      id: location.id,
+      name: location.nama,
+      status: location.status,
+      coordinates: [location.latitude, location.longitude],
+    })), [trcLocations]);
+
   const handleRoleChange = async (id, role) => {
     await updateUserRole(id, role);
     setLocalUsers((prev) =>
@@ -88,22 +170,32 @@ export default function AdminExecutiveDashboard() {
     );
   };
 
-  const handleToggleUser = async (id) => {
-    await toggleUserStatus(id);
-    setLocalUsers((prev) =>
-      (prev || users || []).map((u) => u.id === id ? { ...u, aktif: !(u.aktif ?? u.active ?? true) } : u)
-    );
+  const handleDeleteUser = async (id) => {
+    const confirmed = window.confirm('Hapus pengguna ini secara permanen?');
+    if (!confirmed) return;
+    await deleteUser(id);
+    setLocalUsers((prev) => (prev || users || []).filter((u) => u.id !== id));
   };
 
   const handleBroadcastSubmit = async (e) => {
     e.preventDefault();
     if (!broadcastForm.pesan_peringatan.trim()) return;
     try {
-      const { broadcast } = await createBroadcast({ ...broadcastForm, pengirim: mockAdminProfile.nama });
+      const sender = getLocalUser()?.nama || mockAdminProfile.nama;
+      const { broadcast } = await createBroadcast({ ...broadcastForm, pengirim: sender });
       setBroadcastHistory((prev) => [broadcast, ...(prev || [])]);
       setBroadcastForm((prev) => ({ ...prev, pesan_peringatan: '' }));
     } catch (err) {
       alert(`Gagal mengirim broadcast: ${err.message}`);
+    }
+  };
+
+  const handleDeleteBroadcast = async (id) => {
+    try {
+      await deleteBroadcast(id);
+      setBroadcastHistory((prev) => (prev || []).filter((item) => item.id !== id));
+    } catch (err) {
+      alert(`Gagal menghapus broadcast: ${err.message}`);
     }
   };
 
@@ -203,7 +295,7 @@ export default function AdminExecutiveDashboard() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col h-screen relative">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-50 shadow-sm">
           <h1 className="font-bold text-lg text-slate-800 hidden sm:block">
             {headerTitles[activeTab] || 'Executive Dashboard'} — Pusat Komando BPBD
           </h1>
@@ -212,7 +304,7 @@ export default function AdminExecutiveDashboard() {
             <NotificationBell items={mockAdminNotifications} />
             <div className="h-8 w-px bg-slate-200" />
             <UserProfileDropdown
-              defaultProfile={mockAdminProfile}
+              defaultProfile={getLocalUser() || mockAdminProfile}
               roleClassName="text-green-600"
               avatarClassName="bg-slate-800 text-white"
             />
@@ -224,12 +316,12 @@ export default function AdminExecutiveDashboard() {
           {/* ===== DASHBOARD TAB ===== */}
           {activeTab === 'dashboard' && (
             <div className="w-full h-full overflow-auto animate-in fade-in">
-              {loadingStats ? <LoadingState /> : (
+              {loadingStats ? <LoadingState /> : errorStats ? <ErrorState message={errorStats} onRetry={refetchStats} /> : (
                 <>
                   <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                     {[
                       { label: 'Total Laporan', value: stats?.totalLaporan, color: 'slate' },
-                      { label: 'Tervalidasi & Diproses', value: (stats?.menunggu || 0) + (stats?.diproses || 0), color: 'blue' },
+                      { label: 'Menunggu & Diproses', value: (stats?.menunggu || 0) + (stats?.diproses || 0), color: 'blue' },
                       { label: 'Ditolak / Hoax', value: stats?.ditolak, color: 'red' },
                       { label: 'Selesai', value: stats?.selesai, color: 'emerald' },
                     ].map(({ label, value, color }) => (
@@ -259,8 +351,9 @@ export default function AdminExecutiveDashboard() {
                       <div className="flex-1 relative p-2 min-h-[360px]">
                         <MapWithNoSSR
                           disasterReports={mapReports}
-                          logisticPoints={mockLogisticPoints}
-                          faskesPoints={mockFaskesPoints}
+                          logisticPoints={mapLogistics}
+                          faskesPoints={mapFaskes}
+                          trcPoints={trcPoints}
                           mapCenter={monitoringCircle.center}
                           mapZoom={monitoringCircle.zoom}
                           mapRadius={monitoringCircle.radius}
@@ -281,10 +374,29 @@ export default function AdminExecutiveDashboard() {
                       </div>
                       <div className="bg-white border border-slate-200 rounded-2xl p-5">
                         <h3 className="font-bold text-slate-800 mb-4 text-sm">Legenda Marker</h3>
-                        <div className="space-y-2 text-xs text-slate-700">
-                          <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-2" />Laporan Bencana</p>
-                          <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />Logistik Operator</p>
-                          <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />Faskes Operator</p>
+                        <div className="space-y-3 text-xs text-slate-700">
+                          <div>
+                            <p className="font-semibold text-slate-500 mb-1">Laporan Bencana</p>
+                            <div className="space-y-1">
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 mr-2" />Menunggu Validasi</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />Diproses</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />Selesai</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-2" />Ditolak / Hoax</p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-500 mb-1">Sumber Daya</p>
+                            <div className="space-y-1">
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />Logistik Operator</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />Faskes Operator</p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-500 mb-1">TRC</p>
+                            <div className="space-y-1">
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500 mr-2" />Lokasi TRC Aktif</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:col-span-2 2xl:col-span-1">
@@ -348,10 +460,10 @@ export default function AdminExecutiveDashboard() {
                       <h3 className="font-bold text-slate-800 mb-3">Laporan Aktif Tervalidasi TRC</h3>
                       {loadingReports ? <LoadingState /> : errorReports ? <ErrorState message={errorReports} onRetry={refetchReports} /> : (
                         <div className="space-y-2 text-sm">
-                          {activeReports.filter((r) => r.status === 'menunggu_admin' || r.status === 'diproses').map((r) => (
+                          {activeReportList.map((r, index) => (
                             <div key={r.id} className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-slate-800 truncate">{r.id} — {r.masyarakat?.kategori}</p>
+                                <p className="font-semibold text-slate-800 truncate">{formatSequenceId(index)} — {r.masyarakat?.kategori}</p>
                                 <p className="text-xs text-slate-500">Pelapor: {r.masyarakat?.nama} • Validator: {r.trc?.petugas}</p>
                                 <p className="text-xs text-slate-500 mt-0.5">
                                   Skala: <span className={`font-bold ${getSkalaClass(r.trc?.skala_kedaruratan)}`}>{r.trc?.skala_kedaruratan}</span>
@@ -367,7 +479,7 @@ export default function AdminExecutiveDashboard() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <button
-                                  onClick={() => setSelectedReport(r)}
+                                  onClick={() => setSelectedReport({ ...r, displayId: formatSequenceId(index) })}
                                   className="px-3 py-1.5 text-xs font-bold border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1"
                                 >
                                   <Eye size={14} /> Detail
@@ -378,7 +490,7 @@ export default function AdminExecutiveDashboard() {
                               </div>
                             </div>
                           ))}
-                          {activeReports.filter((r) => r.status === 'menunggu_admin' || r.status === 'diproses').length === 0 && (
+                          {activeReportList.length === 0 && (
                             <p className="text-sm text-slate-400 text-center py-4">Tidak ada laporan aktif.</p>
                           )}
                         </div>
@@ -388,22 +500,26 @@ export default function AdminExecutiveDashboard() {
                     {/* Sinkronisasi Instansi */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-5">
                       <h3 className="font-bold text-slate-800 mb-3">Sinkronisasi Instansi (Operator)</h3>
-                      <div className="space-y-2 text-sm">
-                        {(logisticSummary || []).map((item) => {
-                          const st = item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : '-';
-                          return (
-                            <div key={item.id || item.institution} className="border border-slate-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="font-semibold text-slate-800 truncate">{item.institution ?? '-'}</p>
-                                <p className="text-xs text-slate-500">{item.totalItems ?? '-'} item • stok {item.availableStock ?? '-'}</p>
+                      {errorLogisticSummary ? (
+                        <ErrorState message={errorLogisticSummary} onRetry={refetchLogisticSummary} />
+                      ) : (
+                        <div className="space-y-2 text-sm">
+                          {(logisticSummary || []).map((item) => {
+                            const st = item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : '-';
+                            return (
+                              <div key={item.id || item.institution} className="border border-slate-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-slate-800 truncate">{item.institution ?? '-'}</p>
+                                  <p className="text-xs text-slate-500">{item.totalItems ?? '-'} item • stok {item.availableStock ?? '-'}</p>
+                                </div>
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${getLogisticStatusClass(st)}`}>
+                                  {st}
+                                </span>
                               </div>
-                              <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${getLogisticStatusClass(st)}`}>
-                                {st}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
@@ -462,13 +578,22 @@ export default function AdminExecutiveDashboard() {
 
               <div className="bg-white border border-slate-200 rounded-2xl p-5">
                 <h3 className="font-bold text-slate-800 mb-3">Riwayat Broadcast</h3>
-                {loadingBc ? <LoadingState /> : (
+                {loadingBc ? <LoadingState /> : errorBc ? <ErrorState message={errorBc} onRetry={refetchBc} /> : (
                   <div className="space-y-3 max-h-[70vh] overflow-auto pr-1">
                     {(broadcastHistory || []).map((item) => (
                       <div key={item.id} className="border border-slate-200 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-1">
                           <span className={`text-xs font-bold px-2 py-1 rounded ${getLevelBadgeClass(item.level)}`}>{item.level}</span>
-                          <span className="text-xs text-slate-500">{item.waktu_kirim ? new Date(item.waktu_kirim).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-'}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500">{item.waktu_kirim ? new Date(item.waktu_kirim).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBroadcast(item.id)}
+                              className="text-xs font-semibold text-red-600 hover:text-red-700"
+                            >
+                              Hapus
+                            </button>
+                          </div>
                         </div>
                         <p className="text-sm text-slate-800 font-medium">{item.pesan_peringatan}</p>
                         <p className="text-xs text-slate-500 mt-1">Target: {item.target} — Pengirim: {item.pengirim}</p>
@@ -484,11 +609,13 @@ export default function AdminExecutiveDashboard() {
           {/* ===== PENGGUNA TAB ===== */}
           {activeTab === 'pengguna' && (
             <div className="w-full h-full">
-              {loadingUsers ? <LoadingState /> : (
+              {loadingUsers ? <LoadingState /> : errorUsers ? (
+                <ErrorState message={errorUsers} onRetry={refetchUsers} />
+              ) : (
                 <ManajemenPengguna
                   users={localUsers || users || []}
                   onRoleChange={handleRoleChange}
-                  onToggleUser={handleToggleUser}
+                  onDeleteUser={handleDeleteUser}
                 />
               )}
             </div>
@@ -497,10 +624,20 @@ export default function AdminExecutiveDashboard() {
           {/* ===== SUMBERDAYA TAB ===== */}
           {activeTab === 'sumberdaya' && (
             <div className="w-full h-full">
-              <StatusInstansi
-                logisticSummary={logisticSummary || []}
-                faskesSummary={faskesSummary || []}
-              />
+              {(errorLogisticSummary || errorFaskesSummary) ? (
+                <ErrorState
+                  message={errorLogisticSummary || errorFaskesSummary}
+                  onRetry={() => {
+                    refetchLogisticSummary();
+                    refetchFaskesSummary();
+                  }}
+                />
+              ) : (
+                <StatusInstansi
+                  logisticSummary={logisticSummary || []}
+                  faskesSummary={faskesSummary || []}
+                />
+              )}
             </div>
           )}
 

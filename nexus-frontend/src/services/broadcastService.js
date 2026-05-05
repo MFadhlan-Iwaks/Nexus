@@ -43,17 +43,30 @@ export async function getBroadcasts() {
  * @param {{ pesan_peringatan, level, target_scope, target_nama, pengirim }} payload
  */
 export async function createBroadcast(payload) {
-  await simulateDelay(300);
-  const newBroadcast = {
-    id: `bc-${Date.now()}`,
-    pesan_peringatan: payload.pesan_peringatan,
-    level: payload.level,
-    target: `${payload.target_scope}: ${payload.target_nama || '-'}`,
-    pengirim: payload.pengirim || 'Admin',
-    waktu_kirim: new Date().toISOString(),
-  };
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+
+  const target = `${payload.target_scope}: ${payload.target_nama || '-'}`;
+  const res = await fetch(`${API_BASE}/peringatan`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      pesan_peringatan: payload.pesan_peringatan,
+      level: payload.level,
+      target,
+      pengirim: payload.pengirim || 'Admin',
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengirim broadcast.');
+
+  const newBroadcast = normalizeBroadcast(data.data);
   addBroadcast(newBroadcast);
-  return { message: 'Broadcast berhasil dikirim.', broadcast: newBroadcast };
+  return { message: data.message, broadcast: newBroadcast };
 }
 
 /**
@@ -61,7 +74,15 @@ export async function createBroadcast(payload) {
  * 🟡 Mock — TODO: DELETE /api/peringatan/:id
  */
 export async function deleteBroadcast(id) {
-  await simulateDelay(200);
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+
+  const res = await fetch(`${API_BASE}/peringatan/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal menghapus broadcast.');
   removeBroadcast(id);
-  return { message: 'Broadcast berhasil dihapus.', id };
+  return { message: data.message, id };
 }
