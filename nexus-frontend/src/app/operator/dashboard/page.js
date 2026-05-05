@@ -12,6 +12,7 @@ import ResourceTable from '@/components/operator/ResourceTable';
 import HistoryTable from '@/components/operator/HistoryTable';
 import ModalAddData from '@/components/operator/ModalAddData';
 import ModalUpdateData from '@/components/operator/ModalUpdateData';
+import BroadcastNotice from '@/components/common/BroadcastNotice';
 import { LoadingState, ErrorState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
 import { getLocalUser } from '@/services/authService';
@@ -36,15 +37,14 @@ import {
 
 export default function OperatorDashboardPage() {
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(null);
+  const user = getLocalUser();
+  const hasUser = Boolean(user);
+  const role = String(user?.role || '').toLowerCase();
 
   useEffect(() => {
-    const user = getLocalUser();
-    const role = String(user?.role || '').toLowerCase();
-    if (!user) {
+    if (!hasUser) {
       document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
       document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
-      setIsAuthorized(false);
       router.replace('/auth');
       return;
     }
@@ -56,18 +56,11 @@ export default function OperatorDashboardPage() {
           : role === 'masyarakat'
             ? '/masyarakat/dashboard'
             : '/auth';
-      setIsAuthorized(false);
       router.replace(target);
-      return;
     }
-    setIsAuthorized(true);
-  }, [router]);
+  }, [hasUser, role, router]);
 
-  if (isAuthorized === null) {
-    return <LoadingState message="Memeriksa akses..." />;
-  }
-
-  if (isAuthorized === false) {
+  if (!hasUser || role !== 'operator') {
     return <LoadingState message="Mengalihkan..." />;
   }
 
@@ -98,19 +91,6 @@ function OperatorDashboardContent() {
     [activeTab]
   );
 
-  // Inisialisasi state lokal dari data pertama kali
-  useEffect(() => {
-    if (logisticsData) setLogistics(logisticsData);
-  }, [logisticsData]);
-
-  useEffect(() => {
-    if (faskesData) setFaskes(faskesData);
-  }, [faskesData]);
-
-  useEffect(() => {
-    if (historyData) setStockHistory(historyData);
-  }, [historyData]);
-
   const isLoading = loadingLog || loadingFsk || (activeTab === 'riwayat' && loadingHist);
   const firstError = errorLog || errorFsk || (activeTab === 'riwayat' ? errorHist : null);
 
@@ -128,10 +108,10 @@ function OperatorDashboardContent() {
       status: entry.status,
     };
     recordStockHistory(full);
-    setStockHistory((prev) => [full, ...(prev || [])]);
-  }, []);
+    setStockHistory((prev) => [full, ...(prev || historyData || [])]);
+  }, [historyData]);
 
-  const historyEntries = useMemo(() => (stockHistory || []).map((entry) => ({
+  const historyEntries = useMemo(() => (stockHistory || historyData || []).map((entry) => ({
     id: entry.id,
     time: entry.time || entry.waktu,
     operator: entry.operator || '-',
@@ -142,7 +122,7 @@ function OperatorDashboardContent() {
     newStock: entry.newStock ?? entry.stok_sesudah ?? null,
     unit: entry.unit || '-',
     status: entry.status || 'Sukses',
-  })), [stockHistory]);
+  })), [historyData, stockHistory]);
 
   // ─── Tambah Data ─────────────────────────────────────────
 
@@ -153,7 +133,7 @@ function OperatorDashboardContent() {
           ...newItem,
           stok: Number(newItem.stok),
         });
-        setFaskes((prev) => [item, ...(prev || [])]);
+        setFaskes((prev) => [item, ...(prev || faskesData || [])]);
         addToHistory({
           operator: localUser?.nama || 'Operator',
           itemName: item.nama,
@@ -169,7 +149,7 @@ function OperatorDashboardContent() {
           ...newItem,
           stok: Number(newItem.stok),
         });
-        setLogistics((prev) => [item, ...(prev || [])]);
+        setLogistics((prev) => [item, ...(prev || logisticsData || [])]);
         addToHistory({
           operator: localUser?.nama || 'Operator',
           itemName: item.nama,
@@ -195,7 +175,7 @@ function OperatorDashboardContent() {
       if (tipe === 'faskes') {
         await updateFacility(id, { stok: normalizedStock }); // facilityService
         setFaskes((prev) =>
-          prev?.map((item) => {
+          (prev || faskesData || []).map((item) => {
             if (item.id !== id) return item;
             addToHistory({
               operator: localUser?.nama || 'Operator',
@@ -214,7 +194,7 @@ function OperatorDashboardContent() {
       } else {
         await updateLogistic(id, { stok: normalizedStock }); // logisticService
         setLogistics((prev) =>
-          prev?.map((item) => {
+          (prev || logisticsData || []).map((item) => {
             if (item.id !== id) return item;
             addToHistory({
               operator: localUser?.nama || 'Operator',
@@ -241,11 +221,11 @@ function OperatorDashboardContent() {
   // ─── Tambahkan status ke item ─────────────────────────────
   // Faskes: Tersedia | Hampir Penuh | Penuh
   // Logistik: Aman | Menipis | Habis
-  const faskesWithStatus = (faskes || []).map((item) => ({
+  const faskesWithStatus = (faskes || faskesData || []).map((item) => ({
     ...item,
     status: getFaskesStatus(item.stok ?? 0),   // facilityService helper
   }));
-  const logisticsWithStatus = (logistics || []).map((item) => ({
+  const logisticsWithStatus = (logistics || logisticsData || []).map((item) => ({
     ...item,
     status: getLogisticStatus(item.stok ?? 0), // logisticService helper
   }));
@@ -308,6 +288,12 @@ function OperatorDashboardContent() {
         />
 
         <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="mb-5">
+            <BroadcastNotice
+              title="Peringatan Admin Terbaru"
+              description="Gunakan informasi ini untuk kesiapan logistik dan kapasitas layanan."
+            />
+          </div>
           {renderContent()}
         </div>
       </main>
