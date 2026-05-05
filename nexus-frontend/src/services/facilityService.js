@@ -6,26 +6,27 @@
 //   Logistik: Aman | Menipis | Habis
 // ============================================================
 
-import { getFaskesState, patchFaskes, addFaskes } from '@/data/store';
-import { staticHealthFacilities } from '@/data/mockData';
 import { getToken, getLocalUser } from '@/services/authService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
 const toFaskesView = (item) => {
   const kapasitas = Number(item.kapasitas_tersedia ?? item.stok ?? 0);
   return {
     ...item,
-    nama: item.nama_fasilitas ?? item.nama,
+    id: item.id ?? item.id_faskes,
+    nama: item.nama_fasilitas ?? item.nama_instansi_medis ?? item.nama,
+    nama_fasilitas: item.nama_fasilitas ?? item.nama_instansi_medis ?? item.nama,
     stok: kapasitas,
     unit: item.satuan ?? item.unit ?? 'Bed',
-    institusi: item.lokasi ?? item.institusi,
+    institusi: item.nama_instansi ?? item.lokasi ?? item.institusi ?? item.id_instansi,
     terakhir_update: item.updated_at ?? item.terakhir_update,
     kapasitas_tersedia: kapasitas,
     satuan: item.satuan ?? item.unit ?? 'Bed',
-    lokasi: item.lokasi ?? item.institusi,
+    lokasi: item.nama_instansi ?? item.lokasi ?? item.institusi ?? item.id_instansi,
+    tipe: item.tipe ?? item.kategori,
+    latitude: item.latitude !== null && item.latitude !== undefined ? Number(item.latitude) : item.latitude,
+    longitude: item.longitude !== null && item.longitude !== undefined ? Number(item.longitude) : item.longitude,
   };
 };
 
@@ -41,11 +42,19 @@ export function getFaskesStatus(kapasitas) {
 }
 
 /**
- * Ambil semua fasilitas kesehatan dari shared store.
- * 🟡 Mock — TODO: GET /api/faskes
+ * Ambil semua fasilitas kesehatan dari backend.
  */
 export async function getFacilities() {
-  return staticHealthFacilities.map(toFaskesView);
+  const token = getToken();
+  if (!token) return [];
+
+  const res = await fetch(`${API_BASE}/faskes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil faskes.');
+
+  return (data.data ?? []).map(toFaskesView);
 }
 
 /**

@@ -8,39 +8,6 @@
 
 // --- REPORTS ---
 
-export const staticHealthFacilities = [
-  {
-    id: 'faskes-rs-001',
-    nama: 'RSUD dr. Soekardjo',
-    tipe: 'rumah_sakit',
-    wilayah: 'Kota Tasikmalaya',
-    latitude: -7.327,
-    longitude: 108.220,
-    kapasitas_tersedia: 12,
-    status: 'tersedia',
-  },
-  {
-    id: 'faskes-pkm-001',
-    nama: 'Puskesmas Tawang',
-    tipe: 'puskesmas',
-    wilayah: 'Kota Tasikmalaya',
-    latitude: -7.331,
-    longitude: 108.224,
-    kapasitas_tersedia: 4,
-    status: 'tersedia',
-  },
-  {
-    id: 'faskes-klinik-001',
-    nama: 'Klinik Pratama Contoh',
-    tipe: 'klinik',
-    wilayah: 'Kota Tasikmalaya',
-    latitude: -7.325,
-    longitude: 108.217,
-    kapasitas_tersedia: 2,
-    status: 'tersedia',
-  },
-];
-
 export const staticEvacuationPoints = [
   {
     id: 'evac-001',

@@ -3,7 +3,7 @@
 // src/app/operator/dashboard/page.js
 // Operator dashboard — logistik dari logisticService, faskes dari facilityService
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/operator/Sidebar';
 import Header from '@/components/operator/Header';
@@ -15,7 +15,6 @@ import ModalUpdateData from '@/components/operator/ModalUpdateData';
 import BroadcastNotice from '@/components/common/BroadcastNotice';
 import { LoadingState, ErrorState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
-import { getLocalUser } from '@/services/authService';
 
 // Logistik
 import {
@@ -23,7 +22,6 @@ import {
   createLogistic,
   updateLogistic,
   getStockHistory,
-  recordStockHistory,
   getLogisticStatus,
 } from '@/services/logisticService';
 
@@ -35,13 +33,58 @@ import {
   getFaskesStatus,
 } from '@/services/facilityService';
 
+function subscribeUserSession(onStoreChange) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', onStoreChange);
+  return () => window.removeEventListener('storage', onStoreChange);
+}
+
+function getUserSessionSnapshot() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('user');
+}
+
+function getServerUserSessionSnapshot() {
+  return null;
+}
+
+function subscribeClientReady() {
+  return () => {};
+}
+
+function getClientReadySnapshot() {
+  return true;
+}
+
+function getServerReadySnapshot() {
+  return false;
+}
+
 export default function OperatorDashboardPage() {
   const router = useRouter();
-  const user = getLocalUser();
+  const sessionReady = useSyncExternalStore(
+    subscribeClientReady,
+    getClientReadySnapshot,
+    getServerReadySnapshot
+  );
+  const userSession = useSyncExternalStore(
+    subscribeUserSession,
+    getUserSessionSnapshot,
+    getServerUserSessionSnapshot
+  );
+  const user = useMemo(() => {
+    if (!userSession) return null;
+    try {
+      return JSON.parse(userSession);
+    } catch {
+      return null;
+    }
+  }, [userSession]);
   const hasUser = Boolean(user);
   const role = String(user?.role || '').toLowerCase();
 
   useEffect(() => {
+    if (!sessionReady) return;
     if (!hasUser) {
       document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
       document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
@@ -58,19 +101,19 @@ export default function OperatorDashboardPage() {
             : '/auth';
       router.replace(target);
     }
-  }, [hasUser, role, router]);
+  }, [hasUser, role, router, sessionReady]);
 
-  if (!hasUser || role !== 'operator') {
+  if (!sessionReady || !hasUser || role !== 'operator') {
     return <LoadingState message="Mengalihkan..." />;
   }
 
-  return <OperatorDashboardContent />;
+  return <OperatorDashboardContent currentUser={user} />;
 }
 
-function OperatorDashboardContent() {
+function OperatorDashboardContent({ currentUser }) {
   const [activeTab, setActiveTab] = useState('beranda');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const localUser = getLocalUser();
+  const localUser = currentUser;
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -94,35 +137,33 @@ function OperatorDashboardContent() {
   const isLoading = loadingLog || loadingFsk || (activeTab === 'riwayat' && loadingHist);
   const firstError = errorLog || errorFsk || (activeTab === 'riwayat' ? errorHist : null);
 
-  const addToHistory = useCallback((entry) => {
-    const full = {
-      id: `hist-${Date.now()}`,
-      waktu: new Date().toISOString(),
-      operator: entry.operator,
-      nama_item: entry.itemName,
-      aksi: entry.action,
-      tipe: entry.resourceType,
-      stok_sebelum: entry.previousStock ?? null,
-      stok_sesudah: entry.newStock ?? null,
-      unit: entry.unit,
-      status: entry.status,
-    };
-    recordStockHistory(full);
-    setStockHistory((prev) => [full, ...(prev || historyData || [])]);
-  }, [historyData]);
+  const refreshHistory = useCallback(async () => {
+    const latestHistory = await getStockHistory();
+    setStockHistory(latestHistory);
+  }, []);
 
-  const historyEntries = useMemo(() => (stockHistory || historyData || []).map((entry) => ({
-    id: entry.id,
-    time: entry.time || entry.waktu,
-    operator: entry.operator || '-',
-    action: entry.action || entry.aksi || 'update',
-    resourceType: entry.resourceType || entry.tipe || 'logistik',
-    itemName: entry.itemName || entry.nama_item || '-',
-    previousStock: entry.previousStock ?? entry.stok_sebelum ?? null,
-    newStock: entry.newStock ?? entry.stok_sesudah ?? null,
-    unit: entry.unit || '-',
-    status: entry.status || 'Sukses',
-  })), [historyData, stockHistory]);
+  const historyEntries = useMemo(() => {
+    const seen = new Set();
+    return (stockHistory || historyData || [])
+      .filter((entry) => {
+        const key = entry.id || `${entry.waktu}-${entry.nama_item}-${entry.aksi}-${entry.stok_sesudah}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((entry) => ({
+        id: entry.id,
+        time: entry.time || entry.waktu,
+        operator: entry.operator || '-',
+        action: entry.action || entry.aksi || 'update',
+        resourceType: entry.resourceType || entry.tipe || 'logistik',
+        itemName: entry.itemName || entry.nama_item || '-',
+        previousStock: entry.previousStock ?? entry.stok_sebelum ?? null,
+        newStock: entry.newStock ?? entry.stok_sesudah ?? null,
+        unit: entry.unit || '-',
+        status: entry.status || 'Sukses',
+      }));
+  }, [historyData, stockHistory]);
 
   // ─── Tambah Data ─────────────────────────────────────────
 
@@ -134,32 +175,14 @@ function OperatorDashboardContent() {
           stok: Number(newItem.stok),
         });
         setFaskes((prev) => [item, ...(prev || faskesData || [])]);
-        addToHistory({
-          operator: localUser?.nama || 'Operator',
-          itemName: item.nama,
-          action: 'add',
-          resourceType: 'faskes',
-          previousStock: null,
-          newStock: item.stok,
-          unit: item.unit,
-          status: 'Sukses',
-        });
+        await refreshHistory();
       } else {
         const { item } = await createLogistic({
           ...newItem,
           stok: Number(newItem.stok),
         });
         setLogistics((prev) => [item, ...(prev || logisticsData || [])]);
-        addToHistory({
-          operator: localUser?.nama || 'Operator',
-          itemName: item.nama,
-          action: 'add',
-          resourceType: 'logistik',
-          previousStock: null,
-          newStock: item.stok,
-          unit: item.unit,
-          status: 'Sukses',
-        });
+        await refreshHistory();
       }
     } catch (err) {
       alert(`Gagal menambah data: ${err.message}`);
@@ -175,40 +198,20 @@ function OperatorDashboardContent() {
       if (tipe === 'faskes') {
         await updateFacility(id, { stok: normalizedStock }); // facilityService
         setFaskes((prev) =>
-          (prev || faskesData || []).map((item) => {
-            if (item.id !== id) return item;
-            addToHistory({
-              operator: localUser?.nama || 'Operator',
-              itemName: item.nama,
-              action: 'update',
-              resourceType: 'faskes',
-              previousStock: item.stok,
-              newStock: normalizedStock,
-              unit: item.unit,
-              status: 'Sukses',
-            });
-            return { ...item, stok: normalizedStock };
-          })
+          (prev || faskesData || []).map((item) =>
+            item.id === id ? { ...item, stok: normalizedStock } : item
+          )
         );
+        await refreshHistory();
         setRecentlyUpdatedFaskesId(id);
       } else {
         await updateLogistic(id, { stok: normalizedStock }); // logisticService
         setLogistics((prev) =>
-          (prev || logisticsData || []).map((item) => {
-            if (item.id !== id) return item;
-            addToHistory({
-              operator: localUser?.nama || 'Operator',
-              itemName: item.nama,
-              action: 'update',
-              resourceType: 'logistik',
-              previousStock: item.stok,
-              newStock: normalizedStock,
-              unit: item.unit,
-              status: 'Sukses',
-            });
-            return { ...item, stok: normalizedStock };
-          })
+          (prev || logisticsData || []).map((item) =>
+            item.id === id ? { ...item, stok: normalizedStock } : item
+          )
         );
+        await refreshHistory();
         setRecentlyUpdatedLogisticsId(id);
       }
     } catch (err) {
