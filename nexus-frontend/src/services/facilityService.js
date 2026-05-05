@@ -131,6 +131,22 @@ export async function updateFacility(id, data) {
 }
 
 /**
+ * Hapus fasilitas kesehatan.
+ * Backend: DELETE /api/faskes/:id
+ */
+export async function deleteFacility(id) {
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/faskes/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal menghapus faskes.');
+  return { message: data.message, id };
+}
+
+/**
  * Ringkasan faskes per institusi (untuk Admin).
  * 🟡 Mock — TODO: GET /api/faskes/summary
  */

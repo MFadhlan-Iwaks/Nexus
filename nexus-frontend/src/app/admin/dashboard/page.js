@@ -46,15 +46,14 @@ const mapPresets = {
 
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(null);
+  const user = getLocalUser();
+  const hasUser = Boolean(user);
+  const role = String(user?.role || '').toLowerCase();
 
   useEffect(() => {
-    const user = getLocalUser();
-    const role = String(user?.role || '').toLowerCase();
-    if (!user) {
+    if (!hasUser) {
       document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
       document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
-      setIsAuthorized(false);
       router.replace('/auth');
       return;
     }
@@ -64,20 +63,13 @@ export default function AdminExecutiveDashboard() {
         : role === 'trc'
           ? '/trc/dashboard'
           : role === 'masyarakat'
-            ? '/masyarakat/dashboard'
+          ? '/masyarakat/dashboard'
             : '/auth';
-      setIsAuthorized(false);
       router.replace(target);
-      return;
     }
-    setIsAuthorized(true);
-  }, [router]);
+  }, [hasUser, role, router]);
 
-  if (isAuthorized === null) {
-    return <LoadingState message="Memeriksa akses..." />;
-  }
-
-  if (isAuthorized === false) {
+  if (!hasUser || role !== 'admin') {
     return <LoadingState message="Mengalihkan..." />;
   }
 

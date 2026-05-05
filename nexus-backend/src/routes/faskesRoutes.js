@@ -6,5 +6,6 @@ const faskesController = require('../controllers/faskesController');
 router.get('/', auth, faskesController.getFaskes);
 router.post('/', auth, faskesController.createFaskes);
 router.patch('/:id', auth, faskesController.updateFaskes);
+router.delete('/:id', auth, faskesController.deleteFaskes);
 
 module.exports = router;

@@ -156,3 +156,28 @@ exports.updateFaskes = async (req, res) => {
     res.status(500).json({ message: 'Server Error saat memperbarui faskes' });
   }
 };
+
+exports.deleteFaskes = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM fasilitas_kesehatan
+       WHERE id_faskes = $1
+       RETURNING id_faskes, id_instansi, nama_instansi_medis, unit, kapasitas_tersedia`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Faskes tidak ditemukan.' });
+    }
+
+    res.status(200).json({
+      message: 'Faskes berhasil dihapus.',
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server Error saat menghapus faskes' });
+  }
+};

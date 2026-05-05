@@ -6,17 +6,11 @@
 // ============================================================
 
 import {
-  getLogisticsState,
-  patchLogistic,
-  addLogistic,
-  getStockHistoryState,
   addStockHistory,
 } from '@/data/store';
 import { getToken, getLocalUser } from '@/services/authService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
 // ─── STATUS HELPER ─────────────────────────────────────────
 
@@ -126,8 +120,15 @@ export async function updateLogistic(id, data) {
  * 🟡 Mock — TODO: DELETE /api/logistik/:id
  */
 export async function deleteLogistic(id) {
-  await simulateDelay(200);
-  return { message: 'Item berhasil dihapus.', id };
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/logistik/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal menghapus logistik.');
+  return { message: data.message, id };
 }
 
 // ─── RIWAYAT STOK ─────────────────────────────────────────
