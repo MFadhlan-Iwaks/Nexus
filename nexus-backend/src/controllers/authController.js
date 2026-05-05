@@ -56,3 +56,35 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: "Server Error saat login" });
     }
 };
+
+exports.profile = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT u.id_user, u.nama_lengkap, u.no_hp, u.alamat, u.role, u.id_instansi,
+                    i.nama_instansi
+             FROM users u
+             LEFT JOIN instansi i ON i.id_instansi = u.id_instansi
+             WHERE u.id_user = $1`,
+            [req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "User tidak ditemukan." });
+        }
+
+        const user = result.rows[0];
+        res.status(200).json({
+            user: {
+                id: user.id_user,
+                nama: user.nama_lengkap,
+                no_hp: user.no_hp,
+                alamat: user.alamat,
+                role: user.role,
+                id_instansi: user.id_instansi,
+                instansi: user.nama_instansi,
+            },
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Server Error saat mengambil profil" });
+    }
+};

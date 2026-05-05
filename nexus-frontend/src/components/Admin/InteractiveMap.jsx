@@ -51,11 +51,17 @@ export default function InteractiveMap({
     return '#2563eb';
   };
 
-  const getResourceColor = (status, type) => {
+  const getLogisticColor = (status) => {
     const normalized = String(status || '').toLowerCase();
     if (normalized === 'habis' || normalized === 'penuh') return '#ef4444';
     if (normalized === 'menipis' || normalized === 'hampir penuh') return '#f59e0b';
-    return type === 'faskes' ? '#10b981' : '#3b82f6';
+    return '#3b82f6';
+  };
+
+  const getHealthFacilityColor = (facilityType) => {
+    if (facilityType === 'puskesmas') return '#db2777';
+    if (facilityType === 'klinik') return '#57534e';
+    return '#7c3aed';
   };
 
   return (
@@ -109,7 +115,7 @@ export default function InteractiveMap({
 
         {/* Marker Logistik */}
         {logisticPoints.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
-          <CircleMarker key={`${point.id ?? 'logistik'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getResourceColor(point.status, 'logistik'), fillColor: getResourceColor(point.status, 'logistik'), fillOpacity: 0.9 }}>
+          <CircleMarker key={`${point.id ?? 'logistik'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getLogisticColor(point.status), fillColor: getLogisticColor(point.status), fillOpacity: 0.9 }}>
             <Popup>
               <div className="p-1">
                 <h3 className="font-bold text-sm text-slate-800">{point.label}</h3>
@@ -122,10 +128,11 @@ export default function InteractiveMap({
 
         {/* Marker Faskes */}
         {faskesPoints.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
-          <CircleMarker key={`${point.id ?? 'faskes'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getResourceColor(point.status, 'faskes'), fillColor: getResourceColor(point.status, 'faskes'), fillOpacity: 0.9 }}>
+          <CircleMarker key={`${point.id ?? 'faskes'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getHealthFacilityColor(point.facilityType), fillColor: getHealthFacilityColor(point.facilityType), fillOpacity: 0.9 }}>
             <Popup>
               <div className="p-1">
                 <h3 className="font-bold text-sm text-slate-800">{point.label}</h3>
+                <p className="text-xs text-slate-600">Tipe: <span className="font-bold">{point.facilityTypeLabel || 'Rumah Sakit'}</span></p>
                 <p className="text-xs text-slate-600">Kapasitas: {point.capacity}</p>
                 <p className="text-xs text-slate-600">Status: <span className="font-bold">{point.status}</span></p>
               </div>

@@ -7,6 +7,7 @@
 // ============================================================
 
 import { getFaskesState, patchFaskes, addFaskes } from '@/data/store';
+import { staticHealthFacilities } from '@/data/mockData';
 import { getToken, getLocalUser } from '@/services/authService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -44,24 +45,7 @@ export function getFaskesStatus(kapasitas) {
  * 🟡 Mock — TODO: GET /api/faskes
  */
 export async function getFacilities() {
-  const token = getToken();
-  if (!token) return [];
-  const res = await fetch(`${API_BASE}/faskes`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Gagal mengambil faskes.');
-  return (data.data ?? []).map((item) => toFaskesView({
-    id: item.id_faskes,
-    nama_fasilitas: item.nama_instansi_medis,
-    kategori: item.kategori,
-    kapasitas_tersedia: item.kapasitas_tersedia,
-    satuan: item.unit,
-    lokasi: item.id_instansi,
-    updated_at: item.updated_at,
-    latitude: item.latitude,
-    longitude: item.longitude,
-  }));
+  return staticHealthFacilities.map(toFaskesView);
 }
 
 /**
@@ -128,6 +112,22 @@ export async function updateFacility(id, data) {
   const result = await res.json();
   if (!res.ok) throw new Error(result.message || 'Gagal memperbarui faskes.');
   return { message: result.message, id };
+}
+
+/**
+ * Hapus fasilitas kesehatan.
+ * Backend: DELETE /api/faskes/:id
+ */
+export async function deleteFacility(id) {
+  const token = getToken();
+  if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
+  const res = await fetch(`${API_BASE}/faskes/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal menghapus faskes.');
+  return { message: data.message, id };
 }
 
 /**

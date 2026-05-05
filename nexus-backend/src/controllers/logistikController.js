@@ -156,3 +156,28 @@ exports.updateLogistik = async (req, res) => {
     res.status(500).json({ message: 'Server Error saat memperbarui logistik' });
   }
 };
+
+exports.deleteLogistik = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM logistik
+       WHERE id_logistik = $1
+       RETURNING id_logistik, id_instansi, nama_barang, unit, jumlah_stok`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Logistik tidak ditemukan.' });
+    }
+
+    res.status(200).json({
+      message: 'Logistik berhasil dihapus.',
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server Error saat menghapus logistik' });
+  }
+};

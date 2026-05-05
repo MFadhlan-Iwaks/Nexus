@@ -19,6 +19,9 @@ function normalizeBroadcast(item) {
     level: item.level ?? 'sedang',
     target: item.target ?? '- ',
     pengirim: item.pengirim ?? 'BPBD',
+    zona_bahaya: item.zona_bahaya ?? null,
+    radius_meter: item.radius_meter ?? null,
+    nama_zona: item.nama_zona ?? null,
   };
 }
 
@@ -58,6 +61,9 @@ export async function createBroadcast(payload) {
       level: payload.level,
       target,
       pengirim: payload.pengirim || 'Admin',
+      zona_bahaya: payload.zona_bahaya || null,
+      radius_meter: payload.radius_meter ?? null,
+      nama_zona: payload.nama_zona || null,
     }),
   });
 

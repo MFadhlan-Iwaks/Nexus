@@ -3,7 +3,7 @@
 // src/app/trc/dashboard/page.js
 // TRC: validasi dan update progres menulis ke shared store → admin ikut berubah
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Radio, ClipboardList } from 'lucide-react';
 import TRCNavbar from '@/components/trc/TRCNavbar';
@@ -11,12 +11,12 @@ import TaskCard from '@/components/trc/TaskCard';
 import ValidationModal from '@/components/trc/ValidationModal';
 import TaskDetailModal from '@/components/trc/TaskDetailModal';
 import UpdateProgressModal from '@/components/trc/UpdateProgressModal';
+import BroadcastNotice from '@/components/common/BroadcastNotice';
 import { LoadingState, ErrorState, EmptyState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
 import { getReports } from '@/services/reportService';
 import { postTrcLocation, deleteTrcLocation } from '@/services/trcService';
 import { mockTrcProfile } from '@/data/mockData';
-import { getLocalUser } from '@/services/authService';
 
 // Mapper: format dari mockReports → format TaskCard
 function toNumber(value) {
@@ -56,6 +56,21 @@ function formatDistance(km) {
 }
 
 const uploadBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+function subscribeUserSession(onStoreChange) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', onStoreChange);
+  return () => window.removeEventListener('storage', onStoreChange);
+}
+
+function getUserSessionSnapshot() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('user');
+}
+
+function getServerUserSessionSnapshot() {
+  return null;
+}
 
 function mapReportToTask(report, trcCoords, index) {
   const m = report?.masyarakat || {};
@@ -104,15 +119,26 @@ function mapReportToTask(report, trcCoords, index) {
 
 export default function TRCDashboard() {
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(null);
+  const userSession = useSyncExternalStore(
+    subscribeUserSession,
+    getUserSessionSnapshot,
+    getServerUserSessionSnapshot
+  );
+  const user = useMemo(() => {
+    if (!userSession) return null;
+    try {
+      return JSON.parse(userSession);
+    } catch {
+      return null;
+    }
+  }, [userSession]);
+  const hasUser = Boolean(user);
+  const role = String(user?.role || '').toLowerCase();
 
   useEffect(() => {
-    const user = getLocalUser();
-    const role = String(user?.role || '').toLowerCase();
-    if (!user) {
+    if (!hasUser) {
       document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
       document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
-      setIsAuthorized(false);
       router.replace('/auth');
       return;
     }
@@ -124,26 +150,19 @@ export default function TRCDashboard() {
           : role === 'masyarakat'
             ? '/masyarakat/dashboard'
             : '/auth';
-      setIsAuthorized(false);
       router.replace(target);
-      return;
     }
-    setIsAuthorized(true);
-  }, [router]);
+  }, [hasUser, role, router]);
 
-  if (isAuthorized === null) {
-    return <LoadingState message="Memeriksa akses..." />;
-  }
-
-  if (isAuthorized === false) {
+  if (!hasUser || role !== 'trc') {
     return <LoadingState message="Mengalihkan..." />;
   }
 
-  return <TRCDashboardContent />;
+  return <TRCDashboardContent currentUser={user} />;
 }
 
-function TRCDashboardContent() {
-  const localUser = getLocalUser();
+function TRCDashboardContent({ currentUser }) {
+  const localUser = currentUser;
   const [activeTab, setActiveTab] = useState('baru');
   const [selectedTask, setSelectedTask] = useState(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
@@ -158,7 +177,6 @@ function TRCDashboardContent() {
 
   useEffect(() => {
     if (!geoEnabled || !navigator.geolocation) {
-      setTrcCoords(null);
       trcCoordsRef.current = null;
       return undefined;
     }
@@ -288,7 +306,11 @@ function TRCDashboardContent() {
                   type="checkbox"
                   className="sr-only"
                   checked={geoEnabled}
-                  onChange={(e) => setGeoEnabled(e.target.checked)}
+                  onChange={(e) => {
+                    const enabled = e.target.checked;
+                    setGeoEnabled(enabled);
+                    if (!enabled) setTrcCoords(null);
+                  }}
                 />
                 <span className={`w-10 h-5 rounded-full transition-colors ${geoEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                   <span className={`block w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${geoEnabled ? 'translate-x-5' : 'translate-x-1'} mt-0.5`} />
@@ -302,6 +324,13 @@ function TRCDashboardContent() {
               ↻ Refresh
             </button>
           </div>
+        </div>
+
+        <div className="mb-6">
+          <BroadcastNotice
+            title="Peringatan Admin Terbaru"
+            description="Pantau instruksi dan zona peringatan dari pusat komando sebelum bergerak di lapangan."
+          />
         </div>
 
         {/* Tab Navigasi */}
