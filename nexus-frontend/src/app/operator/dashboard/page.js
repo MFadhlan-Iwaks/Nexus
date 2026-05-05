@@ -239,11 +239,19 @@ function OperatorDashboardContent() {
     switch (activeTab) {
       case 'beranda':
         return (
-          <Summary
-            activeInstitution={localUser?.id_instansi}
-            faskesItems={faskesWithStatus}
-            logisticItems={logisticsWithStatus}
-          />
+          <>
+            <div className="mb-5">
+              <BroadcastNotice
+                title="Peringatan Admin Terbaru"
+                description="Gunakan informasi ini untuk kesiapan logistik dan kapasitas layanan."
+              />
+            </div>
+            <Summary
+              activeInstitution={localUser?.id_instansi}
+              faskesItems={faskesWithStatus}
+              logisticItems={logisticsWithStatus}
+            />
+          </>
         );
       case 'faskes':
       case 'logistik':
@@ -288,12 +296,6 @@ function OperatorDashboardContent() {
         />
 
         <div className="flex-1 overflow-auto p-4 sm:p-6">
-          <div className="mb-5">
-            <BroadcastNotice
-              title="Peringatan Admin Terbaru"
-              description="Gunakan informasi ini untuk kesiapan logistik dan kapasitas layanan."
-            />
-          </div>
           {renderContent()}
         </div>
       </main>

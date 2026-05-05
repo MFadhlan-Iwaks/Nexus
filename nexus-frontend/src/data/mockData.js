@@ -7,6 +7,103 @@
 // ============================================================
 
 // --- REPORTS ---
+
+export const staticHealthFacilities = [
+  {
+    id: 'faskes-rs-001',
+    nama: 'RSUD dr. Soekardjo',
+    tipe: 'rumah_sakit',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.327,
+    longitude: 108.220,
+    kapasitas_tersedia: 12,
+    status: 'tersedia',
+  },
+  {
+    id: 'faskes-pkm-001',
+    nama: 'Puskesmas Tawang',
+    tipe: 'puskesmas',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.331,
+    longitude: 108.224,
+    kapasitas_tersedia: 4,
+    status: 'tersedia',
+  },
+  {
+    id: 'faskes-klinik-001',
+    nama: 'Klinik Pratama Contoh',
+    tipe: 'klinik',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.325,
+    longitude: 108.217,
+    kapasitas_tersedia: 2,
+    status: 'tersedia',
+  },
+];
+
+export const staticEvacuationPoints = [
+  {
+    id: 'evac-001',
+    nama: 'GOR Sukapura',
+    tipe: 'gedung_evakuasi',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.3186,
+    longitude: 108.2187,
+    kapasitas: 500,
+    status: 'aktif',
+  },
+  {
+    id: 'evac-002',
+    nama: 'Masjid Agung Kota Tasikmalaya',
+    tipe: 'tempat_ibadah',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.3276,
+    longitude: 108.2206,
+    kapasitas: 800,
+    status: 'aktif',
+  },
+  {
+    id: 'evac-003',
+    nama: 'Kantor Kecamatan Cihideung',
+    tipe: 'kantor_pemerintah',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.3329,
+    longitude: 108.2148,
+    kapasitas: 250,
+    status: 'aktif',
+  },
+  {
+    id: 'evac-004',
+    nama: 'Lapangan Dadaha',
+    tipe: 'lapangan',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.3347,
+    longitude: 108.2239,
+    kapasitas: 1200,
+    status: 'aktif',
+  },
+  {
+    id: 'evac-005',
+    nama: 'SMAN 1 Tasikmalaya',
+    tipe: 'sekolah',
+    wilayah: 'Kota Tasikmalaya',
+    latitude: -7.3268,
+    longitude: 108.2131,
+    kapasitas: 450,
+    status: 'aktif',
+  },
+  {
+    id: 'evac-006',
+    nama: 'Balai Desa Tawangbanteng',
+    tipe: 'balai_desa',
+    wilayah: 'Kabupaten Tasikmalaya',
+    latitude: -7.3691,
+    longitude: 108.1678,
+    kapasitas: 220,
+    status: 'aktif',
+  },
+];
+
 export const mockReports = [
   {
     id: 'RPT-101',

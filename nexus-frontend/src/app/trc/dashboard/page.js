@@ -3,7 +3,7 @@
 // src/app/trc/dashboard/page.js
 // TRC: validasi dan update progres menulis ke shared store → admin ikut berubah
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Radio, ClipboardList } from 'lucide-react';
 import TRCNavbar from '@/components/trc/TRCNavbar';
@@ -17,7 +17,6 @@ import { useAsync } from '@/hooks/useAsync';
 import { getReports } from '@/services/reportService';
 import { postTrcLocation, deleteTrcLocation } from '@/services/trcService';
 import { mockTrcProfile } from '@/data/mockData';
-import { getLocalUser } from '@/services/authService';
 
 // Mapper: format dari mockReports → format TaskCard
 function toNumber(value) {
@@ -57,6 +56,21 @@ function formatDistance(km) {
 }
 
 const uploadBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+function subscribeUserSession(onStoreChange) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', onStoreChange);
+  return () => window.removeEventListener('storage', onStoreChange);
+}
+
+function getUserSessionSnapshot() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('user');
+}
+
+function getServerUserSessionSnapshot() {
+  return null;
+}
 
 function mapReportToTask(report, trcCoords, index) {
   const m = report?.masyarakat || {};
@@ -105,7 +119,19 @@ function mapReportToTask(report, trcCoords, index) {
 
 export default function TRCDashboard() {
   const router = useRouter();
-  const user = getLocalUser();
+  const userSession = useSyncExternalStore(
+    subscribeUserSession,
+    getUserSessionSnapshot,
+    getServerUserSessionSnapshot
+  );
+  const user = useMemo(() => {
+    if (!userSession) return null;
+    try {
+      return JSON.parse(userSession);
+    } catch {
+      return null;
+    }
+  }, [userSession]);
   const hasUser = Boolean(user);
   const role = String(user?.role || '').toLowerCase();
 
@@ -132,11 +158,11 @@ export default function TRCDashboard() {
     return <LoadingState message="Mengalihkan..." />;
   }
 
-  return <TRCDashboardContent />;
+  return <TRCDashboardContent currentUser={user} />;
 }
 
-function TRCDashboardContent() {
-  const localUser = getLocalUser();
+function TRCDashboardContent({ currentUser }) {
+  const localUser = currentUser;
   const [activeTab, setActiveTab] = useState('baru');
   const [selectedTask, setSelectedTask] = useState(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);

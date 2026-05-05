@@ -8,6 +8,7 @@ import { getBroadcasts } from '@/services/broadcastService';
 import { formatWaktuRelatif, getLevelBadgeClass } from '@/lib/utils';
 import { LoadingState, ErrorState, EmptyState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
+import LinkifiedText from '@/components/common/LinkifiedText';
 
 export default function BroadcastBanner() {
   const { data: broadcasts, loading, error, refetch } = useAsync(getBroadcasts);
@@ -61,9 +62,7 @@ export default function BroadcastBanner() {
                   {formatWaktuRelatif(item.waktu_kirim)}
                 </span>
               </div>
-              <p className="text-sm font-semibold text-slate-800 leading-relaxed">
-                {item.pesan_peringatan}
-              </p>
+              <LinkifiedText text={item.pesan_peringatan} className="text-sm font-semibold text-slate-800 leading-relaxed" />
               <p className="text-xs text-slate-500 mt-1">
                 Target: {item.target} — Pengirim: {item.pengirim}
               </p>

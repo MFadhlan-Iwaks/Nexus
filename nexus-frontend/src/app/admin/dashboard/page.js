@@ -2,7 +2,7 @@
 
 // src/app/admin/dashboard/page.js — Refactored: pakai service layer & mockData terpusat
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { ShieldAlert, Megaphone, Activity, LogOut, LayoutDashboard, Users, Boxes, Send, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ import ReportDetailModal from '@/components/Admin/ReportDetailModal';
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
 import { LoadingState, ErrorState } from '@/components/common/PageStates';
+import LinkifiedText from '@/components/common/LinkifiedText';
 import { useAsync } from '@/hooks/useAsync';
 import { getReports } from '@/services/reportService';
 import { getBroadcasts, createBroadcast, deleteBroadcast } from '@/services/broadcastService';
@@ -20,8 +21,7 @@ import { getDashboardStats, getLogisticSummary, getFaskesSummary } from '@/servi
 import { getLogistics } from '@/services/logisticService';
 import { getFacilities } from '@/services/facilityService';
 import { getTrcLocations } from '@/services/trcService';
-import { getLocalUser } from '@/services/authService';
-import { mockAdminProfile, mockAdminNotifications } from '@/data/mockData';
+import { mockAdminProfile, mockAdminNotifications, staticEvacuationPoints } from '@/data/mockData';
 import { formatWaktuRelatif, getStatusBadgeClass, getStatusLabel, getSkalaClass, getLevelBadgeClass, getLogisticStatusClass } from '@/lib/utils';
 
 const MapWithNoSSR = dynamic(() => import('@/components/Admin/InteractiveMap'), {
@@ -45,6 +45,69 @@ const mapPresets = {
 };
 
 const scalePriority = { tinggi: 3, sedang: 2, rendah: 1 };
+
+const healthFacilityTypeLabels = {
+  rumah_sakit: 'Rumah Sakit',
+  puskesmas: 'Puskesmas',
+  klinik: 'Klinik',
+};
+
+const reportHazardRadiusByScale = {
+  tinggi: 1500,
+  sedang: 900,
+  rendah: 500,
+};
+
+function normalizeHealthFacilityType(item) {
+  const text = [
+    item?.tipe,
+    item?.jenis,
+    item?.kategori,
+    item?.nama_fasilitas,
+    item?.nama,
+    item?.label,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (text.includes('puskesmas')) return 'puskesmas';
+  if (text.includes('klinik')) return 'klinik';
+  return 'rumah_sakit';
+}
+
+function getGoogleMapsLink(latitude, longitude) {
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
+
+function removeEvacuationMessageBlock(message) {
+  return String(message || '').split('\n\nTitik evakuasi aman:')[0].trim();
+}
+
+function buildEvacuationMessageBlock(points) {
+  if (!points.length) return '';
+  const list = points.map((point, index) => (
+    `${index + 1}. ${point.nama} (${point.wilayah})\n${getGoogleMapsLink(point.latitude, point.longitude)}`
+  )).join('\n\n');
+
+  return `Titik evakuasi aman:\n${list}\n\nKoordinat dapat dibuka melalui tautan Google Maps.`;
+}
+
+function getSafeEvacuationPointsForArea(points, hazardArea) {
+  const activePoints = points.filter((point) => point.status === 'aktif');
+  if (!hazardArea?.center) return activePoints;
+
+  return activePoints
+    .map((point) => {
+      const distance = getDistanceMeters(hazardArea.center, [point.latitude, point.longitude]);
+      return { ...point, distance };
+    })
+    .filter((point) => point.distance > (hazardArea.radius || 0))
+    .sort((a, b) => a.distance - b.distance);
+}
+
+function isEvacuationPointSafe(point, hazardArea) {
+  if (!hazardArea?.center) return true;
+  const distance = getDistanceMeters(hazardArea.center, [point.latitude, point.longitude]);
+  return distance > (hazardArea.radius || 0);
+}
 
 const broadcastTemplates = [
   {
@@ -98,9 +161,36 @@ function getDistanceMeters(from, to) {
   return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function subscribeUserSession(onStoreChange) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', onStoreChange);
+  return () => window.removeEventListener('storage', onStoreChange);
+}
+
+function getUserSessionSnapshot() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('user');
+}
+
+function getServerUserSessionSnapshot() {
+  return null;
+}
+
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
-  const user = getLocalUser();
+  const userSession = useSyncExternalStore(
+    subscribeUserSession,
+    getUserSessionSnapshot,
+    getServerUserSessionSnapshot
+  );
+  const user = useMemo(() => {
+    if (!userSession) return null;
+    try {
+      return JSON.parse(userSession);
+    } catch {
+      return null;
+    }
+  }, [userSession]);
   const hasUser = Boolean(user);
   const role = String(user?.role || '').toLowerCase();
 
@@ -127,10 +217,10 @@ export default function AdminExecutiveDashboard() {
     return <LoadingState message="Mengalihkan..." />;
   }
 
-  return <AdminExecutiveDashboardContent />;
+  return <AdminExecutiveDashboardContent currentUser={user} />;
 }
 
-function AdminExecutiveDashboardContent() {
+function AdminExecutiveDashboardContent({ currentUser }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mapScope, setMapScope] = useState('tasikmalaya');
@@ -147,6 +237,16 @@ function AdminExecutiveDashboardContent() {
     nama_zona: null,
     radius_meter: null,
     zona_bahaya: null,
+  });
+  const [broadcastHazardArea, setBroadcastHazardArea] = useState(null);
+  const [selectedEvacuationPointIds, setSelectedEvacuationPointIds] = useState([]);
+  const [customEvacuationPoints, setCustomEvacuationPoints] = useState([]);
+  const [customEvacuationForm, setCustomEvacuationForm] = useState({
+    nama: '',
+    wilayah: '',
+    latitude: '',
+    longitude: '',
+    kapasitas: '',
   });
 
   // --- Data via services ---
@@ -205,23 +305,20 @@ function AdminExecutiveDashboardContent() {
       phase: r.trc?.fase_penanganan || '-',
     })), [activeReports]);
 
-  const mapLogistics = useMemo(() =>
-    (logistics || []).map((item) => ({
-      id: item.id,
-      label: item.nama,
-      coordinates: [item.latitude, item.longitude],
-      stock: item.stok,
-      status: item.stok !== undefined ? (item.stok <= 0 ? 'habis' : item.stok <= 100 ? 'menipis' : 'aman') : 'aman',
-    })), [logistics]);
-
   const mapFaskes = useMemo(() =>
-    (facilities || []).map((item) => ({
-      id: item.id,
-      label: item.nama_fasilitas || item.nama,
-      coordinates: [item.latitude, item.longitude],
-      capacity: item.kapasitas_tersedia ?? item.stok,
-      status: item.kapasitas_tersedia !== undefined ? (item.kapasitas_tersedia <= 0 ? 'penuh' : item.kapasitas_tersedia <= 5 ? 'hampir penuh' : 'tersedia') : 'tersedia',
-    })), [facilities]);
+    (facilities || []).map((item) => {
+      const facilityType = normalizeHealthFacilityType(item);
+      return {
+        id: item.id,
+        label: item.nama_fasilitas || item.nama,
+        facilityType,
+        facilityTypeLabel: healthFacilityTypeLabels[facilityType],
+        wilayah: item.wilayah || item.lokasi || item.institusi || healthFacilityTypeLabels[facilityType],
+        coordinates: [item.latitude, item.longitude],
+        capacity: item.kapasitas_tersedia ?? item.stok,
+        status: item.kapasitas_tersedia !== undefined ? (item.kapasitas_tersedia <= 0 ? 'penuh' : item.kapasitas_tersedia <= 5 ? 'hampir penuh' : 'tersedia') : 'tersedia',
+      };
+    }), [facilities]);
 
   const trcPoints = useMemo(() =>
     (trcLocations || []).map((location) => ({
@@ -250,14 +347,6 @@ function AdminExecutiveDashboardContent() {
 
   const zoneReportIds = useMemo(() => new Set(zoneReports.map((report) => report.id)), [zoneReports]);
 
-  const zoneLogistics = useMemo(() => {
-    if (monitoringCircle.radius <= 0) return [];
-    return mapLogistics
-      .map((item) => ({ ...item, distance: getDistanceMeters(monitoringCircle.center, item.coordinates) }))
-      .filter((item) => item.distance <= monitoringCircle.radius)
-      .sort((a, b) => a.distance - b.distance);
-  }, [mapLogistics, monitoringCircle.center, monitoringCircle.radius]);
-
   const zoneFaskes = useMemo(() => {
     if (monitoringCircle.radius <= 0) return [];
     return mapFaskes
@@ -265,6 +354,114 @@ function AdminExecutiveDashboardContent() {
       .filter((item) => item.distance <= monitoringCircle.radius)
       .sort((a, b) => a.distance - b.distance);
   }, [mapFaskes, monitoringCircle.center, monitoringCircle.radius]);
+
+  const evacuationPointTemplates = useMemo(() => {
+    const healthFacilityTemplates = mapFaskes
+      .filter((item) => isValidCoordinate(item.coordinates))
+      .map((item) => ({
+        id: `faskes-evac-${item.id}`,
+        nama: item.label,
+        tipe: 'fasilitas_layanan_kesehatan',
+        wilayah: item.wilayah,
+        latitude: item.coordinates[0],
+        longitude: item.coordinates[1],
+        kapasitas: item.capacity ?? '-',
+        status: 'aktif',
+        sourceLabel: item.facilityTypeLabel,
+      }));
+
+    return [
+      ...staticEvacuationPoints,
+      ...healthFacilityTemplates,
+    ];
+  }, [mapFaskes]);
+
+  const safeEvacuationPoints = useMemo(() => {
+    return getSafeEvacuationPointsForArea(evacuationPointTemplates, broadcastHazardArea);
+  }, [broadcastHazardArea, evacuationPointTemplates]);
+
+  const selectedEvacuationPoints = useMemo(() => {
+    const selectedIds = new Set(selectedEvacuationPointIds);
+    return [
+      ...safeEvacuationPoints.filter((point) => selectedIds.has(point.id)),
+      ...customEvacuationPoints,
+    ];
+  }, [customEvacuationPoints, safeEvacuationPoints, selectedEvacuationPointIds]);
+
+  const setBroadcastMessageWithEvacuationPoints = (message, points) => {
+    const baseMessage = removeEvacuationMessageBlock(message);
+    const evacuationBlock = buildEvacuationMessageBlock(points);
+    return evacuationBlock ? `${baseMessage}\n\n${evacuationBlock}` : baseMessage;
+  };
+
+  const handleEvacuationPointToggle = (pointId) => {
+    const nextIds = selectedEvacuationPointIds.includes(pointId)
+      ? selectedEvacuationPointIds.filter((id) => id !== pointId)
+      : [...selectedEvacuationPointIds, pointId];
+    const nextSelectedPoints = [
+      ...safeEvacuationPoints.filter((point) => nextIds.includes(point.id)),
+      ...customEvacuationPoints,
+    ];
+
+    setSelectedEvacuationPointIds(nextIds);
+    setBroadcastForm((prev) => ({
+      ...prev,
+      pesan_peringatan: setBroadcastMessageWithEvacuationPoints(prev.pesan_peringatan, nextSelectedPoints),
+    }));
+  };
+
+  const handleAddCustomEvacuationPoint = () => {
+    const latitude = Number(customEvacuationForm.latitude);
+    const longitude = Number(customEvacuationForm.longitude);
+    const nama = customEvacuationForm.nama.trim();
+
+    if (!nama || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      alert('Nama, latitude, dan longitude titik evakuasi wajib diisi dengan benar.');
+      return;
+    }
+
+    const point = {
+      id: `custom-evac-${Date.now()}`,
+      nama,
+      wilayah: customEvacuationForm.wilayah.trim() || 'Titik ditentukan admin',
+      latitude,
+      longitude,
+      kapasitas: customEvacuationForm.kapasitas.trim() || '-',
+      status: 'aktif',
+    };
+
+    if (!isEvacuationPointSafe(point, broadcastHazardArea)) {
+      alert('Titik evakuasi ini berada dalam radius terdampak. Pilih lokasi lain yang lebih aman.');
+      return;
+    }
+
+    const nextCustomPoints = [...customEvacuationPoints, point];
+    const nextSelectedPoints = [
+      ...safeEvacuationPoints.filter((item) => selectedEvacuationPointIds.includes(item.id)),
+      ...nextCustomPoints,
+    ];
+
+    setCustomEvacuationPoints(nextCustomPoints);
+    setCustomEvacuationForm({ nama: '', wilayah: '', latitude: '', longitude: '', kapasitas: '' });
+    setBroadcastForm((prev) => ({
+      ...prev,
+      pesan_peringatan: setBroadcastMessageWithEvacuationPoints(prev.pesan_peringatan, nextSelectedPoints),
+    }));
+  };
+
+  const handleRemoveCustomEvacuationPoint = (pointId) => {
+    const nextCustomPoints = customEvacuationPoints.filter((point) => point.id !== pointId);
+    const nextSelectedPoints = [
+      ...safeEvacuationPoints.filter((item) => selectedEvacuationPointIds.includes(item.id)),
+      ...nextCustomPoints,
+    ];
+
+    setCustomEvacuationPoints(nextCustomPoints);
+    setBroadcastForm((prev) => ({
+      ...prev,
+      pesan_peringatan: setBroadcastMessageWithEvacuationPoints(prev.pesan_peringatan, nextSelectedPoints),
+    }));
+  };
 
   const zoneLevel = useMemo(() => {
     const maxPriority = zoneReports.reduce((max, report) => Math.max(max, scalePriority[report.trc?.skala_kedaruratan] || 0), 0);
@@ -296,7 +493,7 @@ function AdminExecutiveDashboardContent() {
     e.preventDefault();
     if (!broadcastForm.pesan_peringatan.trim()) return;
     try {
-      const sender = getLocalUser()?.nama || mockAdminProfile.nama;
+      const sender = currentUser?.nama || mockAdminProfile.nama;
       const { broadcast } = await createBroadcast({ ...broadcastForm, pengirim: sender });
       setBroadcastHistory((prev) => [broadcast, ...(prev || [])]);
       setBroadcastForm((prev) => ({
@@ -306,6 +503,10 @@ function AdminExecutiveDashboardContent() {
         radius_meter: null,
         zona_bahaya: null,
       }));
+      setBroadcastHazardArea(null);
+      setSelectedEvacuationPointIds([]);
+      setCustomEvacuationPoints([]);
+      setCustomEvacuationForm({ nama: '', wilayah: '', latitude: '', longitude: '', kapasitas: '' });
     } catch (err) {
       alert(`Gagal mengirim broadcast: ${err.message}`);
     }
@@ -321,15 +522,26 @@ function AdminExecutiveDashboardContent() {
   };
 
   const prepareBroadcastFromReport = (report) => {
+    const coordinates = [report.masyarakat?.latitude, report.masyarakat?.longitude];
+    const radius = reportHazardRadiusByScale[report.trc?.skala_kedaruratan] || reportHazardRadiusByScale.sedang;
+    const hazardArea = isValidCoordinate(coordinates)
+      ? { center: coordinates, radius, label: report.masyarakat?.kategori || 'Zona Laporan' }
+      : null;
+    const baseMessage = `Laporan ${report.masyarakat?.kategori ?? 'bencana'} dari ${report.masyarakat?.nama ?? 'warga'}: ${report.masyarakat?.deskripsi || ''}. Tim TRC telah memvalidasi.`;
+
+    setBroadcastHazardArea(hazardArea);
+    setSelectedEvacuationPointIds([]);
+    setCustomEvacuationPoints([]);
+    setCustomEvacuationForm({ nama: '', wilayah: '', latitude: '', longitude: '', kapasitas: '' });
     setBroadcastForm((p) => ({
       ...p,
       level: report.trc?.skala_kedaruratan || 'sedang',
       target_scope: 'kecamatan',
       target_nama: `Koordinat ${report.masyarakat?.latitude?.toFixed(4) ?? '-'}, ${report.masyarakat?.longitude?.toFixed(4) ?? '-'}`,
-      pesan_peringatan: `Laporan ${report.masyarakat?.kategori ?? 'bencana'} dari ${report.masyarakat?.nama ?? 'warga'}: ${report.masyarakat?.deskripsi || ''}. Tim TRC telah memvalidasi.`,
-      nama_zona: null,
-      radius_meter: null,
-      zona_bahaya: null,
+      pesan_peringatan: baseMessage,
+      nama_zona: hazardArea?.label || null,
+      radius_meter: hazardArea?.radius ?? null,
+      zona_bahaya: hazardArea ? `POINT(${hazardArea.center[1]} ${hazardArea.center[0]})` : null,
     }));
     setActiveTab('broadcast');
   };
@@ -339,14 +551,24 @@ function AdminExecutiveDashboardContent() {
     const reportSummary = zoneReports.length > 0
       ? `Terdapat ${zoneReports.length} laporan aktif tervalidasi di area ini.`
       : 'Belum ada laporan aktif tervalidasi di area ini.';
-    const resourceSummary = `Logistik terpantau: ${zoneLogistics.length}. Faskes terpantau: ${zoneFaskes.length}.`;
+    const resourceSummary = `Fasilitas layanan kesehatan terpantau: ${zoneFaskes.length}.`;
+    const hazardArea = {
+      center: monitoringCircle.center,
+      radius: monitoringCircle.radius,
+      label: monitoringCircle.label,
+    };
+    const baseMessage = `Peringatan dini untuk ${monitoringCircle.label} radius ${radiusKm.toFixed(1)} km. ${reportSummary} ${resourceSummary} Warga diminta meningkatkan kewaspadaan dan mengikuti arahan petugas.`;
 
+    setBroadcastHazardArea(hazardArea);
+    setSelectedEvacuationPointIds([]);
+    setCustomEvacuationPoints([]);
+    setCustomEvacuationForm({ nama: '', wilayah: '', latitude: '', longitude: '', kapasitas: '' });
     setBroadcastForm((prev) => ({
       ...prev,
       level: zoneLevel,
       target_scope: 'kustom',
       target_nama: `${monitoringCircle.label} (${radiusKm.toFixed(1)} km)`,
-      pesan_peringatan: `Peringatan dini untuk ${monitoringCircle.label} radius ${radiusKm.toFixed(1)} km. ${reportSummary} ${resourceSummary} Warga diminta meningkatkan kewaspadaan dan mengikuti arahan petugas.`,
+      pesan_peringatan: baseMessage,
       nama_zona: monitoringCircle.label,
       radius_meter: Math.round(monitoringCircle.radius),
       zona_bahaya: zonePointWkt,
@@ -358,9 +580,9 @@ function AdminExecutiveDashboardContent() {
     setBroadcastForm((prev) => ({
       ...prev,
       level: template.level,
-      pesan_peringatan: prev.nama_zona
+      pesan_peringatan: setBroadcastMessageWithEvacuationPoints(prev.nama_zona
         ? `${template.message} Target zona: ${prev.nama_zona}.`
-        : template.message,
+        : template.message, selectedEvacuationPoints),
     }));
   };
 
@@ -387,11 +609,6 @@ function AdminExecutiveDashboardContent() {
   const handleCircleLabelChange = (value) => {
     setMapScope('custom');
     setMonitoringCircle((prev) => ({ ...prev, label: value || 'Kustom Admin' }));
-  };
-
-  const resetCircleToTasikmalaya = () => {
-    setMapScope('tasikmalaya');
-    setMonitoringCircle(mapPresets.tasikmalaya);
   };
 
   const menuItems = [
@@ -458,7 +675,7 @@ function AdminExecutiveDashboardContent() {
             <NotificationBell items={mockAdminNotifications} />
             <div className="h-8 w-px bg-slate-200" />
             <UserProfileDropdown
-              defaultProfile={getLocalUser() || mockAdminProfile}
+              defaultProfile={currentUser || mockAdminProfile}
               roleClassName="text-green-600"
               avatarClassName="bg-slate-800 text-white"
             />
@@ -505,7 +722,6 @@ function AdminExecutiveDashboardContent() {
                       <div className="flex-1 relative p-2 min-h-[360px]">
                         <MapWithNoSSR
                           disasterReports={mapReports}
-                          logisticPoints={mapLogistics}
                           faskesPoints={mapFaskes}
                           trcPoints={trcPoints}
                           mapCenter={monitoringCircle.center}
@@ -539,10 +755,11 @@ function AdminExecutiveDashboardContent() {
                             </div>
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-500 mb-1">Sumber Daya</p>
+                            <p className="font-semibold text-slate-500 mb-1">Fasilitas Layanan Kesehatan</p>
                             <div className="space-y-1">
-                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />Logistik Operator</p>
-                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />Faskes Operator</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-violet-600 mr-2" />Rumah Sakit</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-pink-600 mr-2" />Puskesmas</p>
+                              <p><span className="inline-block w-2.5 h-2.5 rounded-full bg-stone-600 mr-2" />Klinik</p>
                             </div>
                           </div>
                           <div>
@@ -599,15 +816,14 @@ function AdminExecutiveDashboardContent() {
                         </div>
                         <p className="text-xs text-slate-500 mt-3">Pilih Kustom Admin, geser/zoom peta, lalu klik area mana pun untuk membuat pusat lingkaran.</p>
                         <div className="mt-4 border-t border-slate-100 pt-4">
-                          <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="grid grid-cols-2 gap-2 text-center">
                             {[
                               { label: 'Laporan', value: zoneReports.length },
-                              { label: 'Logistik', value: zoneLogistics.length },
-                              { label: 'Faskes', value: zoneFaskes.length },
+                              { label: 'Fasilitas Layanan Kesehatan', value: zoneFaskes.length },
                             ].map((item) => (
                               <div key={item.label} className="rounded-lg bg-slate-50 border border-slate-100 px-2 py-2">
                                 <p className="text-base font-bold text-slate-800">{item.value}</p>
-                                <p className="text-[11px] text-slate-500">{item.label}</p>
+                                <p className="text-[11px] leading-tight text-slate-500">{item.label}</p>
                               </div>
                             ))}
                           </div>
@@ -622,7 +838,7 @@ function AdminExecutiveDashboardContent() {
                                 : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                             }`}
                           >
-                            <Megaphone size={14} /> Broadcast ke Zona Ini
+                            <Megaphone size={14} /> Broadcast
                           </button>
 
                           <div className="mt-4">
@@ -656,12 +872,6 @@ function AdminExecutiveDashboardContent() {
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={resetCircleToTasikmalaya}
-                          className="mt-3 w-full border border-blue-200 text-blue-700 hover:bg-blue-50 font-bold py-2 rounded-lg text-xs"
-                        >
-                          Reset ke Tasikmalaya
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -865,6 +1075,123 @@ function AdminExecutiveDashboardContent() {
                       <p>Pusat: {broadcastForm.zona_bahaya || '-'}</p>
                     </div>
                   )}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">Titik Evakuasi yang Dikirim</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Admin menentukan sendiri titik evakuasi. Koordinat akan masuk ke pesan sebagai link Google Maps.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextPoints = safeEvacuationPoints.slice(0, 3);
+                          setSelectedEvacuationPointIds(nextPoints.map((point) => point.id));
+                          setBroadcastForm((prev) => ({
+                            ...prev,
+                            pesan_peringatan: setBroadcastMessageWithEvacuationPoints(prev.pesan_peringatan, [
+                              ...nextPoints,
+                              ...customEvacuationPoints,
+                            ]),
+                          }));
+                        }}
+                        className="shrink-0 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-700 hover:bg-slate-100"
+                      >
+                        Bantu Pilih 3 Aman
+                      </button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        value={customEvacuationForm.nama}
+                        onChange={(e) => setCustomEvacuationForm((prev) => ({ ...prev, nama: e.target.value }))}
+                        className="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white"
+                        placeholder="Nama titik, contoh: GOR Sukapura"
+                      />
+                      <input
+                        value={customEvacuationForm.wilayah}
+                        onChange={(e) => setCustomEvacuationForm((prev) => ({ ...prev, wilayah: e.target.value }))}
+                        className="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white"
+                        placeholder="Wilayah, contoh: Kota Tasikmalaya"
+                      />
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={customEvacuationForm.latitude}
+                        onChange={(e) => setCustomEvacuationForm((prev) => ({ ...prev, latitude: e.target.value }))}
+                        className="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white"
+                        placeholder="Latitude"
+                      />
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={customEvacuationForm.longitude}
+                        onChange={(e) => setCustomEvacuationForm((prev) => ({ ...prev, longitude: e.target.value }))}
+                        className="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white"
+                        placeholder="Longitude"
+                      />
+                      <input
+                        value={customEvacuationForm.kapasitas}
+                        onChange={(e) => setCustomEvacuationForm((prev) => ({ ...prev, kapasitas: e.target.value }))}
+                        className="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white"
+                        placeholder="Kapasitas, opsional"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomEvacuationPoint}
+                        className="rounded-lg bg-slate-900 px-2.5 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                      >
+                        Tambah Titik
+                      </button>
+                    </div>
+                    {customEvacuationPoints.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {customEvacuationPoints.map((point) => (
+                          <div key={point.id} className="flex items-start justify-between gap-2 rounded-lg border border-blue-100 bg-blue-50 p-2 text-xs">
+                            <div className="min-w-0 text-blue-900">
+                              <p className="font-bold">{point.nama}</p>
+                              <p>{point.wilayah} • Kapasitas {point.kapasitas}</p>
+                              <p className="break-all text-blue-700">{getGoogleMapsLink(point.latitude, point.longitude)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomEvacuationPoint(point.id)}
+                              className="shrink-0 font-bold text-red-600 hover:text-red-700"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-4 border-t border-slate-200 pt-3">
+                      <p className="text-xs font-bold text-slate-700">Pilih dari titik aman tersimpan</p>
+                      <p className="text-xs text-slate-500 mt-1">Termasuk RS, puskesmas, dan klinik dari dashboard. Daftar ini hanya menampilkan titik di luar radius terdampak.</p>
+                    </div>
+                    <div className="mt-3 space-y-2 max-h-48 overflow-auto pr-1">
+                      {safeEvacuationPoints.map((point) => (
+                        <label key={point.id} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={selectedEvacuationPointIds.includes(point.id)}
+                            onChange={() => handleEvacuationPointToggle(point.id)}
+                            className="mt-0.5"
+                          />
+                          <span className="min-w-0">
+                            <span className="block font-bold text-slate-800">{point.nama}</span>
+                            <span className="block text-slate-500">
+                              {point.sourceLabel ? `${point.sourceLabel} • ` : ''}{point.wilayah} • Kapasitas {point.kapasitas}
+                              {Number.isFinite(point.distance) ? ` • ${(point.distance / 1000).toFixed(1)} km dari zona` : ''}
+                            </span>
+                            <span className="block text-blue-700 break-all">{getGoogleMapsLink(point.latitude, point.longitude)}</span>
+                          </span>
+                        </label>
+                      ))}
+                      {safeEvacuationPoints.length === 0 && (
+                        <p className="text-xs text-slate-400 text-center py-3">Belum ada titik evakuasi aman di luar radius zona.</p>
+                      )}
+                    </div>
+                  </div>
                   <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
                     <Send size={16} /> Kirim Broadcast
                   </button>
@@ -890,7 +1217,7 @@ function AdminExecutiveDashboardContent() {
                             </button>
                           </div>
                         </div>
-                        <p className="text-sm text-slate-800 font-medium">{item.pesan_peringatan}</p>
+                        <LinkifiedText text={item.pesan_peringatan} className="text-sm text-slate-800 font-medium" />
                         <p className="text-xs text-slate-500 mt-1">Target: {item.target} — Pengirim: {item.pengirim}</p>
                         {item.nama_zona && (
                           <div className="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-900">
@@ -937,6 +1264,8 @@ function AdminExecutiveDashboardContent() {
                 <StatusInstansi
                   logisticSummary={logisticSummary || []}
                   faskesSummary={faskesSummary || []}
+                  logisticItems={logistics || []}
+                  faskesItems={facilities || []}
                 />
               )}
             </div>

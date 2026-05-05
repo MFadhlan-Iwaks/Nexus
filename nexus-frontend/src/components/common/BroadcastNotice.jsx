@@ -4,6 +4,7 @@ import { AlertTriangle, BellRing, Info } from 'lucide-react';
 import { getBroadcasts } from '@/services/broadcastService';
 import { useAsync } from '@/hooks/useAsync';
 import { formatWaktuRelatif, getLevelBadgeClass } from '@/lib/utils';
+import LinkifiedText from '@/components/common/LinkifiedText';
 
 function getLevelIcon(level) {
   if (level === 'tinggi') return <AlertTriangle size={18} className="text-red-500" />;
@@ -78,7 +79,7 @@ export default function BroadcastNotice({
                     </span>
                     <span className="text-[11px] text-slate-500">{formatWaktuRelatif(item.waktu_kirim)}</span>
                   </div>
-                  <p className="text-sm font-semibold text-slate-800 leading-relaxed">{item.pesan_peringatan}</p>
+                  <LinkifiedText text={item.pesan_peringatan} className="text-sm font-semibold text-slate-800 leading-relaxed" />
                   <p className="text-xs text-slate-500 mt-1">Target: {item.target}</p>
                   {item.nama_zona && (
                     <p className="text-xs text-blue-700 mt-1">
