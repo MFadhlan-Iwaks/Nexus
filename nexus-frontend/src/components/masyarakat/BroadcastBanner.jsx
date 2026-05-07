@@ -1,7 +1,6 @@
 'use client';
 
-// src/components/masyarakat/BroadcastBanner.jsx
-// Menampilkan peringatan dini terbaru dari Admin/BPBD.
+
 
 import { AlertTriangle, BellRing, Info } from 'lucide-react';
 import { getBroadcasts } from '@/services/broadcastService';

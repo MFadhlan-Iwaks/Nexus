@@ -1,7 +1,6 @@
 'use client';
 
-// src/components/auth/LoginForm.jsx
-// Semua fetch dipindah ke authService — komponen bersih
+
 
 import { useState } from 'react';
 import { Phone, Lock, ArrowRight, Loader2 } from 'lucide-react';
@@ -23,7 +22,7 @@ export default function LoginForm() {
     setErrorMsg('');
 
     try {
-      const data = await login(formData); // → authService → POST /api/auth/login
+      const data = await login(formData); 
       saveSession(data.token, data.user);
 
       const role = data.user?.role?.toLowerCase();

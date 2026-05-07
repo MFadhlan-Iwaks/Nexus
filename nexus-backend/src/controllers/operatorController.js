@@ -15,7 +15,7 @@ exports.getStockHistory = async (req, res) => {
     const idUser = req.user.id;
 
     const query = `
-      SELECT h.id_history AS id,
+      SELECT ('logistik-' || h.id_history::text) AS id,
              h.waktu,
              u.nama_lengkap AS operator,
              h.nama_item,
@@ -31,7 +31,7 @@ exports.getStockHistory = async (req, res) => {
 
       UNION ALL
 
-      SELECT h.id_history AS id,
+      SELECT ('faskes-' || h.id_history::text) AS id,
              h.waktu,
              u.nama_lengkap AS operator,
              h.nama_item,

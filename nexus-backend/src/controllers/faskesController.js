@@ -98,6 +98,7 @@ exports.updateFaskes = async (req, res) => {
   try {
     const { id } = req.params;
     const { kapasitas_tersedia, latitude, longitude } = req.body;
+    const id_user_operator = req.user.id;
 
     const point = toPoint(longitude, latitude);
 
@@ -140,7 +141,7 @@ exports.updateFaskes = async (req, res) => {
        VALUES ($1, $2, $3, $4, 'update', $5, $6, $7, 'Sukses')`,
       [
         updated.id_faskes,
-        prevRow.id_user_operator,
+        id_user_operator,
         updated.id_instansi,
         updated.nama_instansi_medis,
         prevRow.kapasitas_tersedia,

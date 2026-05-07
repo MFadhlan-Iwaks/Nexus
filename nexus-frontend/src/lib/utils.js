@@ -1,13 +1,8 @@
-// src/lib/utils.js
-// ============================================================
-// Utility functions yang dipakai di seluruh proyek NEXUS
-// ============================================================
 
-/**
- * Format timestamp ISO ke waktu lokal Indonesia.
- * @param {string} isoString
- * @returns {string} e.g. "29 Apr 2026, 10:30 WIB"
- */
+
+
+
+
 export function formatWaktu(isoString) {
   if (!isoString) return '-';
   try {
@@ -24,9 +19,8 @@ export function formatWaktu(isoString) {
   }
 }
 
-/**
- * Format timestamp ke waktu relatif (e.g. "5 mnt lalu").
- */
+
+
 export function formatWaktuRelatif(isoString) {
   if (!isoString) return '';
   try {
@@ -40,14 +34,14 @@ export function formatWaktuRelatif(isoString) {
   }
 }
 
-// ─── STATUS LAPORAN ──────────────────────────────────────────
+
 
 const STATUS_BADGE = {
   menunggu_admin: 'bg-amber-50 text-amber-700 border border-amber-200',
   diproses:       'bg-blue-50 text-blue-700 border border-blue-200',
   selesai:        'bg-emerald-50 text-emerald-700 border border-emerald-200',
   ditolak:        'bg-red-50 text-red-700 border border-red-200',
-  // alias masyarakat (kapital)
+
   Menunggu: 'bg-amber-50 text-amber-700 border border-amber-200',
   Diproses: 'bg-blue-50 text-blue-700 border border-blue-200',
   Selesai:  'bg-emerald-50 text-emerald-700 border border-emerald-200',
@@ -73,7 +67,7 @@ export function getStatusLabel(status) {
   return STATUS_LABEL[status] || (status ?? '-');
 }
 
-// ─── LEVEL PERINGATAN ────────────────────────────────────────
+
 
 export function getLevelBadgeClass(level) {
   const map = {
@@ -93,12 +87,10 @@ export function getSkalaClass(skala) {
   return map[skala] || 'text-slate-700';
 }
 
-// ─── STATUS LOGISTIK (Aman | Menipis | Habis) ────────────────
 
-/**
- * CSS class badge untuk status logistik.
- * @param {'Aman'|'Menipis'|'Habis'} status
- */
+
+
+
 export function getLogisticStatusClass(status) {
   const map = {
     Aman:    'bg-emerald-100 text-emerald-700',
@@ -108,16 +100,13 @@ export function getLogisticStatusClass(status) {
   return map[status] || 'bg-slate-100 text-slate-700';
 }
 
-/** @deprecated gunakan getLogisticStatusClass */
+
 export const getStockStatusClass = getLogisticStatusClass;
 
-// ─── STATUS FASKES (Tersedia | Hampir Penuh | Penuh) ─────────
 
-/**
- * CSS class badge untuk status fasilitas kesehatan.
- * BERBEDA dari logistik — faskes punya semantik kapasitas.
- * @param {'Tersedia'|'Hampir Penuh'|'Penuh'} status
- */
+
+
+
 export function getFaskesStatusClass(status) {
   const map = {
     Tersedia:    'bg-emerald-100 text-emerald-700',
@@ -127,16 +116,14 @@ export function getFaskesStatusClass(status) {
   return map[status] || 'bg-slate-100 text-slate-700';
 }
 
-/**
- * Label badge untuk summary faskes (huruf kecil dari store → tampilkan human-readable).
- * @param {string} status
- */
+
+
 export function getFaskesStatusLabel(status) {
   const map = {
     tersedia:      'Tersedia',
     'hampir penuh': 'Hampir Penuh',
     penuh:         'Penuh',
-    // langsung pass-through jika sudah kapital
+
     Tersedia:      'Tersedia',
     'Hampir Penuh': 'Hampir Penuh',
     Penuh:         'Penuh',
@@ -144,7 +131,7 @@ export function getFaskesStatusLabel(status) {
   return map[status] || (status ?? '-');
 }
 
-// ─── TEKS SINGKAT ─────────────────────────────────────────────
+
 
 export function truncate(text, max = 80) {
   if (!text) return '';

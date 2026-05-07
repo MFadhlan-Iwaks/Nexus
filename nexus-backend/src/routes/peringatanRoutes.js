@@ -1,18 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const peringatanController = require('../controllers/peringatanController');
-const auth = require('../middleware/authMiddleware'); // Menggunakan pelindung token
+const auth = require('../middleware/authMiddleware'); 
+const { requireRole } = require('../middleware/roleMiddleware');
 
-// Endpoint: GET /api/peringatan
-// Hanya bisa diakses jika membawa Token JWT
+
 router.get('/', auth, peringatanController.getPeringatanDini);
 
-// Endpoint: POST /api/peringatan
-// Hanya bisa diakses jika membawa Token JWT
-router.post('/', auth, peringatanController.createPeringatanDini);
 
-// Endpoint: DELETE /api/peringatan/:id
-// Hanya bisa diakses jika membawa Token JWT
-router.delete('/:id', auth, peringatanController.deletePeringatanDini);
+router.post('/', auth, requireRole('admin'), peringatanController.createPeringatanDini);
+
+
+router.delete('/:id', auth, requireRole('admin'), peringatanController.deletePeringatanDini);
 
 module.exports = router;

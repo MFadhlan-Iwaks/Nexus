@@ -1,10 +1,5 @@
-// src/services/facilityService.js
-// ============================================================
-// Service: Fasilitas Kesehatan (Faskes)
-// TERPISAH dari logisticService karena status berbeda:
-//   Faskes: Tersedia | Hampir Penuh | Penuh
-//   Logistik: Aman | Menipis | Habis
-// ============================================================
+
+
 
 import { getToken, getLocalUser } from '@/services/authService';
 
@@ -30,20 +25,15 @@ const toFaskesView = (item) => {
   };
 };
 
-/**
- * Hitung status faskes berdasarkan kapasitas tersedia.
- * @param {number} kapasitas - jumlah bed/kapasitas tersedia
- * @returns {'Tersedia'|'Hampir Penuh'|'Penuh'}
- */
+
+
 export function getFaskesStatus(kapasitas) {
   if (kapasitas <= 0) return 'Penuh';
   if (kapasitas <= 5) return 'Hampir Penuh';
   return 'Tersedia';
 }
 
-/**
- * Ambil semua fasilitas kesehatan dari backend.
- */
+
 export async function getFacilities() {
   const token = getToken();
   if (!token) return [];
@@ -57,11 +47,8 @@ export async function getFacilities() {
   return (data.data ?? []).map(toFaskesView);
 }
 
-/**
- * Tambah fasilitas baru.
- * 🟡 Mock — TODO: POST /api/faskes
- * @param {{ nama, kategori, stok, unit, institusi }} data
- */
+
+
 export async function createFacility(data) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -100,12 +87,8 @@ export async function createFacility(data) {
   };
 }
 
-/**
- * Update kapasitas fasilitas.
- * 🟡 Mock — TODO: PATCH /api/faskes/:id
- * @param {string} id
- * @param {{ stok: number }} data
- */
+
+
 export async function updateFacility(id, data) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -123,10 +106,8 @@ export async function updateFacility(id, data) {
   return { message: result.message, id };
 }
 
-/**
- * Hapus fasilitas kesehatan.
- * Backend: DELETE /api/faskes/:id
- */
+
+
 export async function deleteFacility(id) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -139,10 +120,8 @@ export async function deleteFacility(id) {
   return { message: data.message, id };
 }
 
-/**
- * Ringkasan faskes per institusi (untuk Admin).
- * 🟡 Mock — TODO: GET /api/faskes/summary
- */
+
+
 export async function getFacilitySummary() {
   const token = getToken();
   if (!token) return [];

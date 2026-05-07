@@ -1,8 +1,5 @@
-// src/services/broadcastService.js
-// ============================================================
-// Service: Broadcast / Peringatan Dini
-// Baca-tulis dari shared store (getBroadcastsState, addBroadcast)
-// ============================================================
+
+
 
 import { getBroadcastsState, addBroadcast, removeBroadcast } from '@/data/store';
 import { getToken } from '@/services/authService';
@@ -25,10 +22,8 @@ function normalizeBroadcast(item) {
   };
 }
 
-/**
- * Ambil semua broadcast dari backend.
- * ✅ Backend: GET /api/peringatan (auth required)
- */
+
+
 export async function getBroadcasts() {
   const token = getToken();
   if (!token) return [];
@@ -40,11 +35,8 @@ export async function getBroadcasts() {
   return (data.data ?? []).map(normalizeBroadcast);
 }
 
-/**
- * Kirim broadcast peringatan dini (Admin only).
- * 🟡 Mock — TODO: POST /api/peringatan
- * @param {{ pesan_peringatan, level, target_scope, target_nama, pengirim }} payload
- */
+
+
 export async function createBroadcast(payload) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -75,10 +67,8 @@ export async function createBroadcast(payload) {
   return { message: data.message, broadcast: newBroadcast };
 }
 
-/**
- * Hapus broadcast (Admin only).
- * 🟡 Mock — TODO: DELETE /api/peringatan/:id
- */
+
+
 export async function deleteBroadcast(id) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');

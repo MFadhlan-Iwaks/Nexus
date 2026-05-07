@@ -1,7 +1,6 @@
-/**
- * @param {boolean} isLogin 
- * @param {function} setIsLogin 
- */
+
+
+
 export default function AuthToggle({ isLogin, setIsLogin }) {
   return (
     <div className="flex bg-slate-100 rounded-lg p-1 mb-8">

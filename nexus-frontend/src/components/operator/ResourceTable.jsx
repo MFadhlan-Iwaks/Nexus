@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, Edit, Boxes, ShieldCheck, AlertTriangle, OctagonX, Building2, ArrowDownUp } from 'lucide-react';
+import { Search, Plus, Edit, Boxes, ShieldCheck, AlertTriangle, OctagonX, Building2, ArrowDownUp, Trash2 } from 'lucide-react';
 
 export default function ResourceTable({
   activeTab,
   onAdd,
   onUpdate,
+  onDelete,
   logisticItems = [],
   faskesItems = [],
   highlightedFaskesId = '',
@@ -33,36 +34,31 @@ export default function ResourceTable({
   };
 
   useEffect(() => {
-    setSearchQuery('');
-    setStatusFilter('Semua');
-    setResourceSortMode('default');
-  }, [activeTab]);
-
-  useEffect(() => {
     const activeHighlightId = isFaskes ? highlightedFaskesId : isLogistik ? highlightedLogisticsId : '';
     if (!activeHighlightId) return;
 
-    setGlowRowId(activeHighlightId);
-    const timer = setTimeout(() => setGlowRowId(''), 2500);
-    return () => clearTimeout(timer);
+    const showTimer = setTimeout(() => setGlowRowId(activeHighlightId), 0);
+    const hideTimer = setTimeout(() => setGlowRowId(''), 2500);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+    };
   }, [highlightedFaskesId, highlightedLogisticsId, isFaskes, isLogistik]);
 
-  // Status class berbeda: logistik vs faskes
+
   const getStatusClass = (status) => {
-    // Faskes: Tersedia | Hampir Penuh | Penuh
+
     if (status === 'Penuh') return 'bg-red-100 text-red-700';
     if (status === 'Hampir Penuh') return 'bg-amber-100 text-amber-700';
     if (status === 'Tersedia') return 'bg-emerald-100 text-emerald-700';
-    // Logistik: Aman | Menipis | Habis
+
     if (status === 'Habis') return 'bg-red-100 text-red-700';
     if (status === 'Menipis') return 'bg-amber-100 text-amber-700';
     if (status === 'Aman') return 'bg-emerald-100 text-emerald-700';
     return 'bg-slate-100 text-slate-600';
   };
 
-  // Label kolom 1 (hijau): Aman / Tersedia
-  // Label kolom 2 (kuning): Menipis / Hampir Penuh
-  // Label kolom 3 (merah): Habis / Penuh
+
   const statusLabels = isFaskes
     ? { ok: 'Tersedia', warn: 'Hampir Penuh', danger: 'Penuh' }
     : { ok: 'Aman', warn: 'Menipis', danger: 'Habis' };
@@ -248,12 +244,22 @@ export default function ResourceTable({
                   </span>
                 </td>
                 <td className="p-4 text-right">
-                  <button
-                    onClick={() => onUpdate({ tipe: activeTab, id: item.id, nama: item.nama, unit: item.unit, current: item.stok })}
-                    className="text-blue-600 hover:text-blue-800 font-medium flex items-center justify-end gap-1 ml-auto"
-                  >
-                    <Edit size={16} /> Perbarui
-                  </button>
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={() => onUpdate({ tipe: activeTab, id: item.id, nama: item.nama, unit: item.unit, current: item.stok })}
+                      className="text-blue-600 hover:text-blue-800 font-medium flex items-center justify-end gap-1"
+                    >
+                      <Edit size={16} /> Perbarui
+                    </button>
+                    {(isFaskes || isLogistik) && (
+                      <button
+                        onClick={() => onDelete?.({ ...item, tipe: activeTab })}
+                        className="text-red-600 hover:text-red-800 font-medium flex items-center justify-end gap-1"
+                      >
+                        <Trash2 size={16} /> Hapus
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))

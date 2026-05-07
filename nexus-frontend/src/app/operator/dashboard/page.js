@@ -1,7 +1,6 @@
 'use client';
 
-// src/app/operator/dashboard/page.js
-// Operator dashboard — logistik dari logisticService, faskes dari facilityService
+
 
 import { useState, useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,24 +11,27 @@ import ResourceTable from '@/components/operator/ResourceTable';
 import HistoryTable from '@/components/operator/HistoryTable';
 import ModalAddData from '@/components/operator/ModalAddData';
 import ModalUpdateData from '@/components/operator/ModalUpdateData';
+import ConfirmDeleteModal from '@/components/operator/ConfirmDeleteModal';
 import BroadcastNotice from '@/components/common/BroadcastNotice';
 import { LoadingState, ErrorState } from '@/components/common/PageStates';
 import { useAsync } from '@/hooks/useAsync';
 
-// Logistik
+
 import {
   getLogistics,
   createLogistic,
   updateLogistic,
+  deleteLogistic,
   getStockHistory,
   getLogisticStatus,
 } from '@/services/logisticService';
 
-// Faskes — terpisah dari logistik
+
 import {
   getFacilities,
   createFacility,
   updateFacility,
+  deleteFacility,
   getFaskesStatus,
 } from '@/services/facilityService';
 
@@ -117,16 +119,18 @@ function OperatorDashboardContent({ currentUser }) {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [recentlyUpdatedFaskesId, setRecentlyUpdatedFaskesId] = useState('');
   const [recentlyUpdatedLogisticsId, setRecentlyUpdatedLogisticsId] = useState('');
 
-  // Local state (optimistic)
+
   const [logistics, setLogistics] = useState(null);
   const [faskes, setFaskes] = useState(null);
   const [stockHistory, setStockHistory] = useState(null);
 
-  // Fetch awal — fungsi stabil agar tidak trigger re-render loop
+
   const { data: logisticsData, loading: loadingLog, error: errorLog } = useAsync(getLogistics);
   const { data: faskesData, loading: loadingFsk, error: errorFsk } = useAsync(getFacilities);
   const { data: historyData, loading: loadingHist, error: errorHist } = useAsync(
@@ -146,7 +150,10 @@ function OperatorDashboardContent({ currentUser }) {
     const seen = new Set();
     return (stockHistory || historyData || [])
       .filter((entry) => {
-        const key = entry.id || `${entry.waktu}-${entry.nama_item}-${entry.aksi}-${entry.stok_sesudah}`;
+        const type = entry.tipe || entry.resourceType || 'riwayat';
+        const key = entry.id
+          ? `${type}-${entry.id}`
+          : `${type}-${entry.waktu}-${entry.nama_item}-${entry.aksi}-${entry.stok_sesudah}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -165,7 +172,7 @@ function OperatorDashboardContent({ currentUser }) {
       }));
   }, [historyData, stockHistory]);
 
-  // ─── Tambah Data ─────────────────────────────────────────
+
 
   const handleAddData = async (newItem) => {
     try {
@@ -190,13 +197,13 @@ function OperatorDashboardContent({ currentUser }) {
     setShowAddModal(false);
   };
 
-  // ─── Update Stok/Kapasitas ───────────────────────────────
+
 
   const handleUpdateStock = async ({ id, newStock, tipe }) => {
     const normalizedStock = Number(newStock);
     try {
       if (tipe === 'faskes') {
-        await updateFacility(id, { stok: normalizedStock }); // facilityService
+        await updateFacility(id, { stok: normalizedStock }); 
         setFaskes((prev) =>
           (prev || faskesData || []).map((item) =>
             item.id === id ? { ...item, stok: normalizedStock } : item
@@ -205,7 +212,7 @@ function OperatorDashboardContent({ currentUser }) {
         await refreshHistory();
         setRecentlyUpdatedFaskesId(id);
       } else {
-        await updateLogistic(id, { stok: normalizedStock }); // logisticService
+        await updateLogistic(id, { stok: normalizedStock }); 
         setLogistics((prev) =>
           (prev || logisticsData || []).map((item) =>
             item.id === id ? { ...item, stok: normalizedStock } : item
@@ -221,19 +228,42 @@ function OperatorDashboardContent({ currentUser }) {
     setSelectedItem(null);
   };
 
-  // ─── Tambahkan status ke item ─────────────────────────────
-  // Faskes: Tersedia | Hampir Penuh | Penuh
-  // Logistik: Aman | Menipis | Habis
+  const handleRequestDeleteResource = (item) => {
+    setDeleteTarget({ item, type: item.tipe || activeTab });
+  };
+
+  const handleConfirmDeleteResource = async () => {
+    if (!deleteTarget) return;
+
+    const { item, type } = deleteTarget;
+    setIsDeleting(true);
+    try {
+      if (type === 'faskes') {
+        await deleteFacility(item.id);
+        setFaskes((prev) => (prev || faskesData || []).filter((faskesItem) => faskesItem.id !== item.id));
+      } else {
+        await deleteLogistic(item.id);
+        setLogistics((prev) => (prev || logisticsData || []).filter((logisticItem) => logisticItem.id !== item.id));
+      }
+      setDeleteTarget(null);
+    } catch (err) {
+      alert(`Gagal menghapus ${type === 'faskes' ? 'faskes' : 'logistik'}: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+
   const faskesWithStatus = (faskes || faskesData || []).map((item) => ({
     ...item,
-    status: getFaskesStatus(item.stok ?? 0),   // facilityService helper
+    status: getFaskesStatus(item.stok ?? 0),   
   }));
   const logisticsWithStatus = (logistics || logisticsData || []).map((item) => ({
     ...item,
-    status: getLogisticStatus(item.stok ?? 0), // logisticService helper
+    status: getLogisticStatus(item.stok ?? 0), 
   }));
 
-  // ─── Render tab content ───────────────────────────────────
+
 
   const renderContent = () => {
     if (isLoading) return <LoadingState />;
@@ -260,9 +290,11 @@ function OperatorDashboardContent({ currentUser }) {
       case 'logistik':
         return (
           <ResourceTable
+            key={activeTab}
             activeTab={activeTab}
             onAdd={() => setShowAddModal(true)}
             onUpdate={(item) => { setSelectedItem(item); setShowUpdateModal(true); }}
+            onDelete={handleRequestDeleteResource}
             faskesItems={faskesWithStatus}
             logisticItems={logisticsWithStatus}
             highlightedFaskesId={recentlyUpdatedFaskesId}
@@ -314,6 +346,16 @@ function OperatorDashboardContent({ currentUser }) {
         onClose={() => { setShowUpdateModal(false); setSelectedItem(null); }}
         selectedItem={selectedItem}
         onSave={handleUpdateStock}
+      />
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        item={deleteTarget?.item}
+        resourceType={deleteTarget?.type}
+        loading={isDeleting}
+        onCancel={() => {
+          if (!isDeleting) setDeleteTarget(null);
+        }}
+        onConfirm={handleConfirmDeleteResource}
       />
     </div>
   );

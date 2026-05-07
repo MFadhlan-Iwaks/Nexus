@@ -1,5 +1,4 @@
-// src/components/Admin/StatusInstansi.jsx
-// Monitoring sumber daya instansi dalam bentuk detail per instansi.
+
 
 import { Ambulance, Building2, Package } from 'lucide-react';
 import { getFaskesStatusClass, getLogisticStatusClass } from '@/lib/utils';

@@ -1,12 +1,6 @@
-// src/data/mockData.js
-// ============================================================
-// NEXUS — Sumber Data Terpusat (Mock)
-// ============================================================
-// Semua data dummy ada di sini. Saat backend siap, cukup ganti
-// isi service layer (src/services/) tanpa ubah komponen UI.
-// ============================================================
 
-// --- REPORTS ---
+
+
 
 export const staticEvacuationPoints = [
   {
@@ -194,7 +188,7 @@ export const mockReports = [
   },
 ];
 
-// --- RIWAYAT LAPORAN MASYARAKAT (view dari sisi masyarakat) ---
+
 export const mockRiwayatMasyarakat = [
   {
     id_laporan: 'RPT-101',
@@ -222,7 +216,7 @@ export const mockRiwayatMasyarakat = [
   },
 ];
 
-// --- BROADCASTS / PERINGATAN DINI ---
+
 export const mockBroadcasts = [
   {
     id: 'bc-1',
@@ -250,7 +244,7 @@ export const mockBroadcasts = [
   },
 ];
 
-// --- LOGISTICS ---
+
 export const mockLogistics = [
   { id: 'log-1', nama: 'Beras untuk Dapur RS', kategori: 'Logistik Pangan', stok: 350, unit: 'Kg', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T09:12:00Z' },
   { id: 'log-2', nama: 'Air Mineral Pasien', kategori: 'Logistik Pangan', stok: 90, unit: 'Dus', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T09:08:00Z' },
@@ -263,7 +257,7 @@ export const mockLogistics = [
   { id: 'log-9', nama: 'Infus RL', kategori: 'Medis', stok: 80, unit: 'Botol', institusi: 'RSUD dr. Soekardjo', terakhir_update: '2026-04-29T08:05:00Z' },
 ];
 
-// --- FASKES (Fasilitas Kesehatan) ---
+
 export const mockFaskes = [
   { id: 'FSK-001', nama_fasilitas: 'RSUD dr. Soekardjo (IGD)', kategori: 'Ruang Darurat (IGD)', kapasitas_total: 20, kapasitas_tersedia: 5, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 16:00' },
   { id: 'FSK-002', nama_fasilitas: 'RSUD dr. Soekardjo (Rawat Inap Lt.2)', kategori: 'Rawat Inap', kapasitas_total: 60, kapasitas_tersedia: 14, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 16:00' },
@@ -274,7 +268,7 @@ export const mockFaskes = [
   { id: 'FSK-007', nama_fasilitas: 'RSUD dr. Soekardjo (Kamar Perawatan)', kategori: 'Kamar Perawatan', kapasitas_total: 45, kapasitas_tersedia: 20, satuan: 'Bed', lokasi: 'RSUD dr. Soekardjo', updated_at: '2026-04-29 15:00' },
 ];
 
-// --- USERS ---
+
 export const mockUsers = [
   { id: 'USR-201', nama: 'M. Fadhlan', no_hp: '0812-1234-567', role: 'masyarakat', wilayah: 'Kec. Tawang', aktif: true, created_at: '2026-01-10' },
   { id: 'USR-202', nama: 'Siti Nurhaliza', no_hp: '0856-1111-222', role: 'masyarakat', wilayah: 'Kec. Cipedes', aktif: false, created_at: '2026-02-05' },
@@ -286,7 +280,7 @@ export const mockUsers = [
   { id: 'USR-001', nama: 'Kepala BPBD', no_hp: '0811-0000-001', role: 'admin', wilayah: 'BPBD Kota', aktif: true, created_at: '2025-12-01' },
 ];
 
-// --- TRC UNITS ---
+
 export const mockTrcUnits = [
   {
     id: 'TRC-001',
@@ -320,7 +314,7 @@ export const mockTrcUnits = [
   },
 ];
 
-// --- STOCK HISTORY (Operator) ---
+
 export const mockStockHistory = [
   {
     id: 'hist-1',
@@ -360,21 +354,21 @@ export const mockStockHistory = [
   },
 ];
 
-// --- LOGISTIC SUMMARY (untuk Admin Dashboard) ---
+
 export const mockLogisticSummary = [
   { id: 'lg-1', institution: 'RSUD dr. Soekardjo', totalItems: 12, availableStock: 462, status: 'Aman', updatedAt: '09:12 WIB' },
   { id: 'lg-2', institution: 'PMI Tasikmalaya', totalItems: 8, availableStock: 95, status: 'Menipis', updatedAt: '09:08 WIB' },
   { id: 'lg-3', institution: 'Puskesmas Kawalu', totalItems: 6, availableStock: 0, status: 'Habis', updatedAt: '08:55 WIB' },
 ];
 
-// --- FASKES SUMMARY (untuk Admin Dashboard) ---
+
 export const mockFaskesSummary = [
   { id: 'fs-1', institution: 'RSUD dr. Soekardjo', totalUnits: 5, availableCapacity: 41, status: 'Tersedia', updatedAt: '16:00 WIB' },
   { id: 'fs-2', institution: 'Puskesmas Cihideung', totalUnits: 1, availableCapacity: 3, status: 'Hampir Penuh', updatedAt: '15:20 WIB' },
   { id: 'fs-3', institution: 'Puskesmas Kawalu', totalUnits: 1, availableCapacity: 7, status: 'Tersedia', updatedAt: '15:10 WIB' },
 ];
 
-// --- MAP POINTS (untuk Admin Peta) ---
+
 export const mockLogisticPoints = [
   { id: 'LP-1', label: 'Gudang Logistik RSUD', status: 'aman', coordinates: [-7.336, 108.219], stock: 350 },
   { id: 'LP-2', label: 'Posko PMI Timur', status: 'menipis', coordinates: [-7.329, 108.236], stock: 95 },
@@ -388,7 +382,7 @@ export const mockFaskesPoints = [
   { id: 'FP-4', label: 'Observasi Puskesmas Kawalu', status: 'Tersedia', coordinates: [-7.351, 108.209], capacity: 7 },
 ];
 
-// --- NOTIFICATIONS ---
+
 export const mockAdminNotifications = [
   { id: 'adm-1', title: 'Laporan Baru Masuk', message: '3 laporan bencana baru menunggu validasi TRC.', time: '2 menit lalu', read: false },
   { id: 'adm-2', title: 'Update Faskes', message: 'RSUD Kota memperbarui kapasitas ruang darurat.', time: '12 menit lalu', read: false },
@@ -405,7 +399,7 @@ export const mockTrcNotifications = [
   { id: 't-2', title: 'Update Tugas', message: 'Tugas REP-003 diperbarui oleh Admin.', time: '1 jam lalu', read: true },
 ];
 
-// --- PROFIL DEFAULT (sementara sebelum ada auth context) ---
+
 export const mockAdminProfile = {
   nama: 'Kepala BPBD',
   role: 'Administrator',

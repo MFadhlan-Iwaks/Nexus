@@ -1,4 +1,4 @@
-// src/components/admin/InteractiveMap.jsx
+
 "use client";
 
 import { useEffect } from 'react';
@@ -75,13 +75,13 @@ export default function InteractiveMap({
         <MapViewSync center={mapCenter} zoom={mapZoom} />
         <EditableCircleCenter enabled={isCircleEditable} onChange={onCircleCenterChange} />
 
-        {/* Layer Peta Dasar dari OpenStreetMap */}
+        
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Lingkaran Radius Pemantauan BPBD */}
+        
         {mapRadius > 0 && (
           <Circle
             center={mapCenter}
@@ -99,7 +99,7 @@ export default function InteractiveMap({
           </Popup>
         </CircleMarker>
 
-        {/* Marker Laporan Bencana */}
+        
         {disasterReports.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
           <CircleMarker key={`${point.id ?? 'report'}-${index}`} center={point.coordinates} radius={9} pathOptions={{ color: getReportColor(point), fillColor: getReportColor(point), fillOpacity: 0.8 }}>
             <Popup className="font-sans">
@@ -113,7 +113,7 @@ export default function InteractiveMap({
           </CircleMarker>
         ))}
 
-        {/* Marker Logistik */}
+        
         {logisticPoints.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
           <CircleMarker key={`${point.id ?? 'logistik'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getLogisticColor(point.status), fillColor: getLogisticColor(point.status), fillOpacity: 0.9 }}>
             <Popup>
@@ -126,7 +126,7 @@ export default function InteractiveMap({
           </CircleMarker>
         ))}
 
-        {/* Marker Faskes */}
+        
         {faskesPoints.filter((point) => Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
           <CircleMarker key={`${point.id ?? 'faskes'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: getHealthFacilityColor(point.facilityType), fillColor: getHealthFacilityColor(point.facilityType), fillOpacity: 0.9 }}>
             <Popup>
@@ -140,7 +140,7 @@ export default function InteractiveMap({
           </CircleMarker>
         ))}
 
-        {/* Marker TRC Aktif */}
+        
         {trcPoints.filter((point) => point.status === 'aktif' && Array.isArray(point.coordinates) && point.coordinates.length === 2 && point.coordinates.every(Number.isFinite)).map((point, index) => (
           <CircleMarker key={`${point.id ?? 'trc'}-${index}`} center={point.coordinates} radius={7} pathOptions={{ color: '#06b6d4', fillColor: '#06b6d4', fillOpacity: 0.9 }}>
             <Popup>

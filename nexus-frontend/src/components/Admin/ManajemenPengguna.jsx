@@ -1,4 +1,4 @@
-// src/components/admin/ManajemenPengguna.jsx
+
 import { useMemo, useState } from 'react';
 import { Search, Trash2, Users } from 'lucide-react';
 
@@ -31,7 +31,7 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onDeleteUs
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300 flex flex-col h-full">
       
-      {/* HEADER & PENCARIAN */}
+      
       <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-50">
         <div>
           <h2 className="font-bold text-slate-800 text-lg">Manajemen Pengguna Sistem</h2>
@@ -52,7 +52,7 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onDeleteUs
         </div>
       </div>
 
-      {/* AREA TABEL */}
+      
       <div className="flex-1 overflow-auto">
         <table className="w-full text-left">
           <thead className="bg-white sticky top-0 z-0">
@@ -65,7 +65,7 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onDeleteUs
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm">
             {filteredUsers.map((item, index) => {
-              // Support field lama (name, active, region) dan baru (nama, aktif, wilayah)
+
               const namaUser = item.nama || item.name || '-';
               const wilayah = item.wilayah || item.region || '-';
               return (
@@ -89,7 +89,7 @@ export default function ManajemenPengguna({ users = [], onRoleChange, onDeleteUs
                         <option value="admin">Admin</option>
                       </select>
                       <button
-                        onClick={() => onDeleteUser?.(item.id)}
+                        onClick={() => onDeleteUser?.(item)}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors text-red-600 border border-red-200 hover:bg-red-50 inline-flex items-center gap-1"
                       >
                         <Trash2 size={12} /> Hapus

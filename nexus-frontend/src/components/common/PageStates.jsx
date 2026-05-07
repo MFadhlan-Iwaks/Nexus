@@ -1,14 +1,10 @@
-// src/components/common/PageStates.jsx
-// ============================================================
-// Reusable: Loading, Error, Empty state components
-// Dipakai di semua halaman untuk konsistensi UX
-// ============================================================
+
+
 
 import { Loader2, AlertTriangle, Inbox, RefreshCw } from 'lucide-react';
 
-/**
- * Loading state — tampilan spinner saat data sedang dimuat.
- */
+
+
 export function LoadingState({ message = 'Memuat data...' }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -18,9 +14,8 @@ export function LoadingState({ message = 'Memuat data...' }) {
   );
 }
 
-/**
- * Error state — tampilan saat terjadi kesalahan.
- */
+
+
 export function ErrorState({ message = 'Terjadi kesalahan.', onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -41,9 +36,8 @@ export function ErrorState({ message = 'Terjadi kesalahan.', onRetry }) {
   );
 }
 
-/**
- * Empty state — tampilan saat tidak ada data.
- */
+
+
 export function EmptyState({ title = 'Tidak Ada Data', description, icon: Icon = Inbox, action }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">

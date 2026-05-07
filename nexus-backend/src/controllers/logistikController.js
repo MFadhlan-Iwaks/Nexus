@@ -96,6 +96,7 @@ exports.updateLogistik = async (req, res) => {
   try {
     const { id } = req.params;
     const { jumlah_stok, latitude, longitude } = req.body;
+    const id_user_operator = req.user.id;
 
     const point = toPoint(longitude, latitude);
 
@@ -138,7 +139,7 @@ exports.updateLogistik = async (req, res) => {
        VALUES ($1, $2, $3, $4, 'update', $5, $6, $7, 'Sukses')`,
       [
         updated.id_logistik,
-        prevRow.id_user_operator,
+        id_user_operator,
         updated.id_instansi,
         updated.nama_barang,
         prevRow.jumlah_stok,

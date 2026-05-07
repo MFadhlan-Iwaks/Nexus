@@ -32,7 +32,7 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, ac
         />
       )}
 
-      {/* SIDEBAR UTAMA */}
+      
       <aside className={`
         fixed lg:relative inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col h-screen 
         transform transition-transform duration-300 ease-in-out
