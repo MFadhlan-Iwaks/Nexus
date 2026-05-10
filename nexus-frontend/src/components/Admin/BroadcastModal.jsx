@@ -1,4 +1,4 @@
-// src/components/admin/BroadcastModal.jsx
+
 import { X, Megaphone, AlertTriangle, Send, Info, Radio } from 'lucide-react';
 import { useState } from 'react';
 
@@ -17,7 +17,7 @@ export default function BroadcastModal({ isOpen, onClose }) {
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
         
-        {/* HEADER MODAL */}
+        
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="flex items-center gap-3">
             <div className="bg-red-100 text-red-600 p-2 rounded-xl">
@@ -33,7 +33,7 @@ export default function BroadcastModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* FORMULIR BROADCAST */}
+        
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5">
           
           <div className="bg-amber-50 p-3 rounded-xl flex gap-3 border border-amber-100">

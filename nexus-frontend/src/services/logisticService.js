@@ -1,9 +1,5 @@
-// src/services/logisticService.js
-// ============================================================
-// Service: Logistik (bukan faskes)
-// Status: Aman | Menipis | Habis
-// Untuk faskes gunakan facilityService.js (status berbeda)
-// ============================================================
+
+
 
 import {
   addStockHistory,
@@ -12,25 +8,20 @@ import { getToken, getLocalUser } from '@/services/authService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// ─── STATUS HELPER ─────────────────────────────────────────
 
-/**
- * Hitung status logistik berdasarkan jumlah stok.
- * @param {number} stok
- * @returns {'Aman'|'Menipis'|'Habis'}
- */
+
+
+
 export function getLogisticStatus(stok) {
   if (stok <= 0) return 'Habis';
   if (stok <= 100) return 'Menipis';
   return 'Aman';
 }
 
-// ─── LOGISTIK ──────────────────────────────────────────────
 
-/**
- * Ambil semua item logistik dari shared store.
- * 🟡 Mock — TODO: GET /api/logistik
- */
+
+
+
 export async function getLogistics() {
   const token = getToken();
   if (!token) return [];
@@ -51,11 +42,8 @@ export async function getLogistics() {
   }));
 }
 
-/**
- * Tambah item logistik baru.
- * 🟡 Mock — TODO: POST /api/logistik
- * @param {{ nama, kategori, stok, unit, institusi }} data
- */
+
+
 export async function createLogistic(data) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -93,12 +81,8 @@ export async function createLogistic(data) {
   return { message: result.message, item: mapped };
 }
 
-/**
- * Update stok logistik.
- * 🟡 Mock — TODO: PATCH /api/logistik/:id
- * @param {string} id
- * @param {{ stok: number }} data
- */
+
+
 export async function updateLogistic(id, data) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -115,10 +99,8 @@ export async function updateLogistic(id, data) {
   return { message: result.message, id };
 }
 
-/**
- * Hapus item logistik.
- * 🟡 Mock — TODO: DELETE /api/logistik/:id
- */
+
+
 export async function deleteLogistic(id) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -131,12 +113,10 @@ export async function deleteLogistic(id) {
   return { message: data.message, id };
 }
 
-// ─── RIWAYAT STOK ─────────────────────────────────────────
 
-/**
- * Ambil riwayat aktivitas stok dari shared store.
- * 🟡 Mock — TODO: GET /api/logistik/riwayat
- */
+
+
+
 export async function getStockHistory() {
   const token = getToken();
   if (!token) return [];
@@ -148,19 +128,16 @@ export async function getStockHistory() {
   return data.data ?? [];
 }
 
-/**
- * Tambah entri riwayat stok.
- */
+
+
 export function recordStockHistory(entry) {
   addStockHistory({ ...entry, waktu: entry.waktu || new Date().toISOString() });
 }
 
-// ─── SUMMARY (untuk Admin) ─────────────────────────────────
 
-/**
- * Ringkasan logistik per institusi (untuk Admin dashboard).
- * 🟡 Mock — TODO: GET /api/logistik/summary
- */
+
+
+
 export async function getLogisticSummary() {
   const token = getToken();
   if (!token) return [];

@@ -1,7 +1,6 @@
 'use client';
 
-// src/components/masyarakat/RiwayatLaporan.jsx
-// Daftar riwayat laporan milik masyarakat yang sedang login.
+
 
 import { MapPin, Clock, ChevronRight } from 'lucide-react';
 import { getRiwayatMasyarakat } from '@/services/reportService';

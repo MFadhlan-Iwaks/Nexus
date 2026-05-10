@@ -121,16 +121,43 @@ exports.updateUserRole = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
   if (!ensureAdmin(req, res)) return;
+  const client = await pool.connect();
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM users WHERE id_user = $1 RETURNING id_user', [id]);
-    if (result.rows.length === 0) {
+
+    if (String(id) === String(req.user?.id)) {
+      return res.status(400).json({ message: 'Akun admin yang sedang digunakan tidak bisa dihapus.' });
+    }
+
+    await client.query('BEGIN');
+
+    const existing = await client.query('SELECT id_user FROM users WHERE id_user = $1', [id]);
+    if (existing.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ message: 'User tidak ditemukan.' });
     }
+
+    await client.query('UPDATE fasilitas_kesehatan SET id_user_operator = NULL WHERE id_user_operator = $1', [id]);
+    await client.query('UPDATE logistik SET id_user_operator = NULL WHERE id_user_operator = $1', [id]);
+    await client.query('UPDATE laporan_bencana SET id_user = NULL WHERE id_user = $1', [id]);
+    await client.query('UPDATE peringatan_dini SET id_user_admin = NULL WHERE id_user_admin = $1', [id]);
+    await client.query('UPDATE sitrep_laporan SET id_user_trc = NULL WHERE id_user_trc = $1', [id]);
+    await client.query('UPDATE validasi_trc SET id_user_trc = NULL WHERE id_user_trc = $1', [id]);
+
+    const result = await client.query('DELETE FROM users WHERE id_user = $1 RETURNING id_user', [id]);
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'User tidak ditemukan.' });
+    }
+
+    await client.query('COMMIT');
     res.status(200).json({ message: 'User berhasil dihapus.', data: result.rows[0] });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err.message);
-    res.status(500).json({ message: 'Gagal menghapus user.' });
+    res.status(500).json({ message: 'Gagal menghapus user.', error: err.message });
+  } finally {
+    client.release();
   }
 };
 

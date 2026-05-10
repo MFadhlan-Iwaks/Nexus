@@ -18,7 +18,7 @@ exports.getPeringatanDini = async (req, res) => {
       optionalColumns.has('nama_zona') ? 'nama_zona' : 'NULL::text AS nama_zona',
     ].join(', ');
 
-    // Mengambil 5 peringatan terbaru berdasarkan waktu_kirim
+
     const query = `
       SELECT id_peringatan, id_user_admin, pesan_peringatan, level, target, zona_bahaya,
              ${optionalSelect}, pengirim, waktu_kirim

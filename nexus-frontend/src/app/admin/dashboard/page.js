@@ -1,6 +1,6 @@
 'use client';
 
-// src/app/admin/dashboard/page.js — Refactored: pakai service layer & mockData terpusat
+
 
 import { useMemo, useState, useEffect, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
@@ -8,6 +8,7 @@ import { ShieldAlert, Megaphone, Activity, LogOut, LayoutDashboard, Users, Boxes
 import { useRouter } from 'next/navigation';
 import StatusInstansi from '@/components/Admin/StatusInstansi';
 import ManajemenPengguna from '@/components/Admin/ManajemenPengguna';
+import ConfirmDeleteUserModal from '@/components/Admin/ConfirmDeleteUserModal';
 import ReportDetailModal from '@/components/Admin/ReportDetailModal';
 import UserProfileDropdown from '@/components/common/UserProfileDropdown';
 import NotificationBell from '@/components/common/NotificationBell';
@@ -241,6 +242,8 @@ function AdminExecutiveDashboardContent({ currentUser }) {
   const [broadcastHazardArea, setBroadcastHazardArea] = useState(null);
   const [selectedEvacuationPointIds, setSelectedEvacuationPointIds] = useState([]);
   const [customEvacuationPoints, setCustomEvacuationPoints] = useState([]);
+  const [deleteUserTarget, setDeleteUserTarget] = useState(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [customEvacuationForm, setCustomEvacuationForm] = useState({
     nama: '',
     wilayah: '',
@@ -249,7 +252,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
     kapasitas: '',
   });
 
-  // --- Data via services ---
+
   const { data: reports, loading: loadingReports, error: errorReports, refetch: refetchReports } = useAsync(getReports);
   const { data: users, loading: loadingUsers, error: errorUsers, refetch: refetchUsers } = useAsync(getUsers);
   const { data: stats, loading: loadingStats, error: errorStats, refetch: refetchStats } = useAsync(getDashboardStats);
@@ -259,7 +262,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
   const { data: facilities } = useAsync(getFacilities);
   const { data: trcLocations } = useAsync(getTrcLocations);
 
-  // Local state untuk broadcast history & users (optimistic updates)
+
   const [broadcastHistory, setBroadcastHistory] = useState(null);
   const { loading: loadingBc, error: errorBc, refetch: refetchBc } = useAsync(async () => {
     const data = await getBroadcasts();
@@ -482,11 +485,23 @@ function AdminExecutiveDashboardContent({ currentUser }) {
     );
   };
 
-  const handleDeleteUser = async (id) => {
-    const confirmed = window.confirm('Hapus pengguna ini secara permanen?');
-    if (!confirmed) return;
-    await deleteUser(id);
-    setLocalUsers((prev) => (prev || users || []).filter((u) => u.id !== id));
+  const handleRequestDeleteUser = (user) => {
+    setDeleteUserTarget(user);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteUserTarget) return;
+
+    setIsDeletingUser(true);
+    try {
+      await deleteUser(deleteUserTarget.id);
+      setLocalUsers((prev) => (prev || users || []).filter((u) => u.id !== deleteUserTarget.id));
+      setDeleteUserTarget(null);
+    } catch (err) {
+      alert(`Gagal menghapus user: ${err.message}`);
+    } finally {
+      setIsDeletingUser(false);
+    }
   };
 
   const handleBroadcastSubmit = async (e) => {
@@ -635,7 +650,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans text-slate-800">
 
-      {/* Sidebar */}
+      
       <aside className="w-20 lg:w-64 bg-slate-900 flex flex-col h-screen transition-all duration-300">
         <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800">
           <ShieldAlert size={24} className="text-red-500" />
@@ -664,7 +679,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
         </div>
       </aside>
 
-      {/* Main */}
+      
       <main className="flex-1 flex flex-col h-screen relative">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-50 shadow-sm">
           <h1 className="font-bold text-lg text-slate-800 hidden sm:block">
@@ -684,7 +699,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
 
         <div className="flex-1 p-4 lg:p-6 overflow-hidden bg-slate-50 flex flex-col lg:flex-row gap-6">
 
-          {/* ===== DASHBOARD TAB ===== */}
+          
           {activeTab === 'dashboard' && (
             <div className="w-full h-full overflow-auto animate-in fade-in">
               {loadingStats ? <LoadingState /> : errorStats ? <ErrorState message={errorStats} onRetry={refetchStats} /> : (
@@ -877,7 +892,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
                   </div>
 
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    {/* Laporan Aktif */}
+                    
                     <div className="bg-white border border-slate-200 rounded-2xl p-5">
                       <div className="flex flex-col gap-3 mb-3">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -979,7 +994,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
                       )}
                     </div>
 
-                    {/* Sinkronisasi Instansi */}
+                    
                     <div className="bg-white border border-slate-200 rounded-2xl p-5">
                       <h3 className="font-bold text-slate-800 mb-3">Sinkronisasi Instansi (Operator)</h3>
                       {errorLogisticSummary ? (
@@ -1009,7 +1024,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
             </div>
           )}
 
-          {/* ===== BROADCAST TAB ===== */}
+          
           {activeTab === 'broadcast' && (
             <div className="w-full h-full overflow-auto grid grid-cols-1 xl:grid-cols-2 gap-6 animate-in fade-in">
               <div className="bg-white border border-slate-200 rounded-2xl p-5">
@@ -1234,7 +1249,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
             </div>
           )}
 
-          {/* ===== PENGGUNA TAB ===== */}
+          
           {activeTab === 'pengguna' && (
             <div className="w-full h-full">
               {loadingUsers ? <LoadingState /> : errorUsers ? (
@@ -1243,13 +1258,13 @@ function AdminExecutiveDashboardContent({ currentUser }) {
                 <ManajemenPengguna
                   users={localUsers || users || []}
                   onRoleChange={handleRoleChange}
-                  onDeleteUser={handleDeleteUser}
+                  onDeleteUser={handleRequestDeleteUser}
                 />
               )}
             </div>
           )}
 
-          {/* ===== SUMBERDAYA TAB ===== */}
+          
           {activeTab === 'sumberdaya' && (
             <div className="w-full h-full">
               {(errorLogisticSummary || errorFaskesSummary) ? (
@@ -1273,7 +1288,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
 
         </div>
 
-        {/* Report Detail Modal */}
+        
         {selectedReport && (
           <ReportDetailModal
             report={selectedReport}
@@ -1284,6 +1299,15 @@ function AdminExecutiveDashboardContent({ currentUser }) {
             }}
           />
         )}
+        <ConfirmDeleteUserModal
+          isOpen={Boolean(deleteUserTarget)}
+          user={deleteUserTarget}
+          loading={isDeletingUser}
+          onCancel={() => {
+            if (!isDeletingUser) setDeleteUserTarget(null);
+          }}
+          onConfirm={handleConfirmDeleteUser}
+        />
       </main>
     </div>
   );

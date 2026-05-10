@@ -1,7 +1,6 @@
 'use client';
 
-// src/components/auth/RegisterForm.jsx
-// Semua fetch dipindah ke authService — komponen bersih
+
 
 import { useState } from 'react';
 import { Phone, MapPin, Lock, User, Loader2 } from 'lucide-react';
@@ -31,9 +30,9 @@ export default function RegisterForm({ onSuccess }) {
         no_hp: formData.no_hp,
         alamat: formData.alamat,
         password: formData.password,
-      }); // → authService → POST /api/auth/register
+      }); 
 
-      // Kembali ke tab login setelah daftar berhasil
+
       if (onSuccess) onSuccess();
       else window.location.reload();
     } catch (err) {

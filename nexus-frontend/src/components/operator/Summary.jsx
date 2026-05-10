@@ -1,7 +1,5 @@
-// src/components/operator/Summary.jsx
-// Dashboard beranda operator — menampilkan faskes dan logistik
-// Faskes: Tersedia | Hampir Penuh | Penuh
-// Logistik: Aman | Menipis | Habis
+
+
 
 import { Building2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -28,7 +26,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
       .slice(0, 8);
   }, [logisticItems, searchQuery]);
 
-  // Stats faskes (Tersedia / Hampir Penuh / Penuh)
+
   const faskesStats = useMemo(() => faskesItems.reduce((acc, item) => {
     acc.total++;
     const s = getFaskesStatus(item.stok);
@@ -38,7 +36,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
     return acc;
   }, { total: 0, tersedia: 0, hampirPenuh: 0, penuh: 0 }), [faskesItems]);
 
-  // Stats logistik (Aman / Menipis / Habis)
+
   const logisticStats = useMemo(() => logisticItems.reduce((acc, item) => {
     acc.total++;
     const s = getLogisticStatus(item.stok);
@@ -50,7 +48,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header Banner */}
+      
       <div className="rounded-2xl p-6 text-white shadow-lg relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900">
         <div className="relative z-10">
           <h3 className="text-2xl font-bold mb-2">Selamat Bertugas, Tim {activeInstitution || ''}!</h3>
@@ -63,7 +61,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* ── Faskes ─────────────────────────────── */}
+        
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-start justify-between gap-2">
             <div>
@@ -78,7 +76,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
             />
           </div>
           <div className="p-4">
-            {/* Stats faskes */}
+            
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Total Fasilitas</p>
@@ -100,7 +98,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
               </div>
             </div>
 
-            {/* Tabel faskes */}
+            
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -140,7 +138,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
           </div>
         </div>
 
-        {/* ── Logistik ─────────────────────────────── */}
+        
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-start justify-between gap-2">
             <div>
@@ -155,7 +153,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
             />
           </div>
           <div className="p-4">
-            {/* Stats logistik */}
+            
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Total Item</p>
@@ -177,7 +175,7 @@ export default function Summary({ activeInstitution, faskesItems = [], logisticI
               </div>
             </div>
 
-            {/* Tabel logistik */}
+            
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>

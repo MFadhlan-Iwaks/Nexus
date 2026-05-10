@@ -1,5 +1,5 @@
-// src/components/trc/ValidationModal.jsx
-// TRC validasi laporan → tulis ke shared store via reportService → admin ikut berubah
+
+
 
 import { X, CheckCircle2, AlertTriangle, BarChart, Loader2, Camera } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -57,7 +57,7 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
 
-        {/* Header */}
+        
         <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
           <div>
             <h3 className="font-bold text-lg text-slate-900">Validasi Laporan</h3>
@@ -70,7 +70,7 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
 
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
 
-          {/* 1. Status Validasi */}
+          
           <div className="space-y-3">
             <label className="text-sm font-bold text-slate-700">
               1. Hasil Pemeriksaan Lokasi <span className="text-red-500">*</span>
@@ -93,7 +93,7 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
             </div>
           </div>
 
-          {/* 2. Skala Kedaruratan (hanya jika valid) */}
+          
           {status === 'valid' && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
               <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
@@ -117,7 +117,7 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
             </div>
           )}
 
-          {/* 3. Catatan */}
+          
           <div>
             <label className="text-sm font-bold text-slate-700 mb-2 block">
               {status === 'valid' ? '3.' : '2.'} Catatan Lapangan
@@ -131,7 +131,7 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
             />
           </div>
 
-          {/* 4. Bukti Foto Validasi */}
+          
           <div className="space-y-3">
             <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
               <Camera size={16} className="text-slate-400" /> {status === 'valid' ? '4.' : '3.'} Bukti Foto Validasi <span className="text-red-500">*</span>
@@ -164,7 +164,7 @@ export default function ValidationModal({ isOpen, onClose, task, onSuccess }) {
           </div>
         </div>
 
-        {/* Footer */}
+        
         <div className="p-4 sm:p-5 border-t border-slate-100 bg-white sticky bottom-0">
           <button
             disabled={!canSubmit || loading}

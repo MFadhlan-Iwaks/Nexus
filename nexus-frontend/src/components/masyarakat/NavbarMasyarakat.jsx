@@ -1,6 +1,6 @@
 "use client";
 
-// src/components/masyarakat/NavbarMasyarakat.jsx
+
 
 import { ShieldAlert, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';

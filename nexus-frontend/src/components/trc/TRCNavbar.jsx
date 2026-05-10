@@ -1,6 +1,6 @@
 "use client";
 
-// src/components/trc/TRCNavbar.jsx
+
 
 import { ShieldAlert, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -12,7 +12,7 @@ import { clearSession } from '@/services/authService';
 export default function TRCNavbar({ profile }) {
   const router = useRouter();
 
-  // Gunakan prop profile jika ada, fallback ke mock
+
   const activeProfile = profile || mockTrcProfile;
 
   const handleLogout = () => {

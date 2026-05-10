@@ -11,12 +11,14 @@ function toPoint(longitude, latitude) {
 exports.getFaskes = async (req, res) => {
   try {
     const query = `
-      SELECT id_faskes, id_instansi, id_user_operator, nama_instansi_medis,
-             kategori, unit, kapasitas_tersedia,
-             ST_Y(koordinat::geometry) AS latitude,
-             ST_X(koordinat::geometry) AS longitude
-      FROM fasilitas_kesehatan
-      ORDER BY id_faskes DESC;
+      SELECT f.id_faskes, f.id_instansi, f.id_user_operator, f.nama_instansi_medis,
+             f.kategori, f.unit, f.kapasitas_tersedia,
+             i.nama_instansi,
+             ST_Y(f.koordinat::geometry) AS latitude,
+             ST_X(f.koordinat::geometry) AS longitude
+      FROM fasilitas_kesehatan f
+      LEFT JOIN instansi i ON i.id_instansi = f.id_instansi
+      ORDER BY f.id_faskes DESC;
     `;
     const result = await pool.query(query);
 
@@ -96,6 +98,7 @@ exports.updateFaskes = async (req, res) => {
   try {
     const { id } = req.params;
     const { kapasitas_tersedia, latitude, longitude } = req.body;
+    const id_user_operator = req.user.id;
 
     const point = toPoint(longitude, latitude);
 
@@ -138,7 +141,7 @@ exports.updateFaskes = async (req, res) => {
        VALUES ($1, $2, $3, $4, 'update', $5, $6, $7, 'Sukses')`,
       [
         updated.id_faskes,
-        prevRow.id_user_operator,
+        id_user_operator,
         updated.id_instansi,
         updated.nama_instansi_medis,
         prevRow.kapasitas_tersedia,

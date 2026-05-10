@@ -5,6 +5,7 @@ export default function TaskCard({ data, onValidate, onDetail, onUpdate, canVali
   const isPenanganan = data.status === 'penanganan';
   const displayIdValue = data.displayId ?? data.id;
   const displayId = `LAP-${String(displayIdValue)}`;
+  const progressPhoto = data.fotoProgress || data.trc?.foto_progress;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col relative">
@@ -25,6 +26,11 @@ export default function TaskCard({ data, onValidate, onDetail, onUpdate, canVali
           <div className="text-slate-400 flex flex-col items-center">
             <ImageIcon size={32} />
             <span className="text-xs mt-1">Tidak ada foto</span>
+          </div>
+        )}
+        {progressPhoto && (
+          <div className="absolute bottom-2 right-2 bg-blue-600/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
+            <ImageIcon size={11} /> Foto Progres
           </div>
         )}
       </div>

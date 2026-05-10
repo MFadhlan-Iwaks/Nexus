@@ -1,4 +1,4 @@
-import { X, MapPin, Clock, User, ShieldCheck, AlignLeft, Layers, Navigation } from 'lucide-react';
+import { X, MapPin, Clock, User, ShieldCheck, AlignLeft, Layers, Navigation, Image as ImageIcon } from 'lucide-react';
 
 export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidation, onOpenUpdate, canValidate }) {
   if (!isOpen || !task) return null;
@@ -7,6 +7,8 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
   const isPenanganan = task.status === 'penanganan';
   const displayIdValue = task.displayId ?? task.id;
   const displayId = `LAP-${String(displayIdValue)}`;
+  const progressPhoto = task.fotoProgress || task.trc?.foto_progress;
+  const validationPhoto = task.fotoValidasi || task.trc?.foto_bukti;
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -58,6 +60,48 @@ export default function TaskDetailModal({ isOpen, onClose, task, onOpenValidatio
                 {task.deskripsi}
               </div>
             </div>
+
+            {(progressPhoto || validationPhoto || task.trc?.fase_penanganan || task.trc?.catatan) && (
+              <div>
+                <h5 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                  <ImageIcon size={16} className="text-slate-400" /> Progres Penanganan
+                </h5>
+                <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                  <div className="p-4 space-y-2">
+                    {task.trc?.fase_penanganan && (
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-slate-900">Fase:</span> {task.trc.fase_penanganan}
+                      </p>
+                    )}
+                    {task.trc?.catatan && (
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        <span className="font-bold text-slate-900">Catatan:</span> {task.trc.catatan}
+                      </p>
+                    )}
+                  </div>
+                  {(progressPhoto || validationPhoto) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 pt-0">
+                      {progressPhoto && (
+                        <a href={progressPhoto} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <div className="px-3 py-2 text-xs font-bold text-slate-600 border-b border-slate-100">
+                            Foto Progres
+                          </div>
+                          <img src={progressPhoto} alt="Foto progres penanganan" className="h-36 w-full object-cover" />
+                        </a>
+                      )}
+                      {validationPhoto && (
+                        <a href={validationPhoto} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <div className="px-3 py-2 text-xs font-bold text-slate-600 border-b border-slate-100">
+                            Foto Validasi
+                          </div>
+                          <img src={validationPhoto} alt="Foto validasi laporan" className="h-36 w-full object-cover" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div>
               <h5 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">

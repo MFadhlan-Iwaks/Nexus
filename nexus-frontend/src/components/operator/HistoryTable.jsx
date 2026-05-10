@@ -24,8 +24,8 @@ export default function HistoryTable({ entries = [], activeInstitution }) {
 
       <table className="w-full text-left">
         <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
-          {filtered.map((entry) => (
-            <tr key={entry.id} className="hover:bg-slate-50">
+          {filtered.map((entry, index) => (
+            <tr key={`${entry.id || 'history'}-${index}`} className="hover:bg-slate-50">
               <td className="p-4 w-48">
                 <div className="flex items-center gap-2 text-xs">
                   <Clock size={14} /> {entry.time}

@@ -1,7 +1,6 @@
 'use client';
 
-// src/app/trc/dashboard/page.js
-// TRC: validasi dan update progres menulis ke shared store → admin ikut berubah
+
 
 import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,7 +17,7 @@ import { getReports } from '@/services/reportService';
 import { postTrcLocation, deleteTrcLocation } from '@/services/trcService';
 import { mockTrcProfile } from '@/data/mockData';
 
-// Mapper: format dari mockReports → format TaskCard
+
 function toNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -111,6 +110,8 @@ function mapReportToTask(report, trcCoords, index) {
     waktu: waktuRaw ? new Date(waktuRaw).toLocaleString('id-ID') : '-',
     pelapor: pelapor || 'Anonim',
     foto: foto || null,
+    fotoProgress: t.foto_progress || null,
+    fotoValidasi: t.foto_bukti || null,
     trc: t,
     jarak: formatDistance(distanceKm),
     mapsUrl,
@@ -172,7 +173,7 @@ function TRCDashboardContent({ currentUser }) {
   const [trcCoords, setTrcCoords] = useState(null);
   const trcCoordsRef = useRef(null);
 
-  // State laporan lokal agar UI update langsung setelah aksi TRC
+
   const [localTasks, setLocalTasks] = useState(null);
 
   useEffect(() => {
@@ -244,7 +245,7 @@ function TRCDashboardContent({ currentUser }) {
     return t.status === 'ditolak';
   });
 
-  // Callback setelah validasi → update status task di UI
+
   const handleValidationSuccess = useCallback(({ id, status_validasi }) => {
     setLocalTasks((prev) =>
       prev?.map((t) =>
@@ -257,18 +258,20 @@ function TRCDashboardContent({ currentUser }) {
     );
   }, []);
 
-  // Callback setelah update progres → update fase di UI
-  const handleProgressSuccess = useCallback(({ id, fase_penanganan, catatan, status }) => {
+
+  const handleProgressSuccess = useCallback(({ id, fase_penanganan, catatan, status, foto_progress }) => {
     setLocalTasks((prev) =>
       prev?.map((t) =>
         t.id !== id ? t : {
           ...t,
           status,
+          fotoProgress: foto_progress || t.fotoProgress,
           trc: {
             ...t.trc,
             fase_penanganan,
             catatan,
             waktu_update: new Date().toISOString(),
+            foto_progress: foto_progress || t.trc?.foto_progress,
           },
         }
       )
@@ -281,7 +284,7 @@ function TRCDashboardContent({ currentUser }) {
 
       <main className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-4 py-6">
 
-        {/* Header Operasi */}
+        
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Operasi Lapangan</h1>
@@ -333,7 +336,7 @@ function TRCDashboardContent({ currentUser }) {
           />
         </div>
 
-        {/* Tab Navigasi */}
+        
         <div className="flex border-b border-slate-200 mb-6">
           {[
             { id: 'baru', label: 'Laporan Baru (Validasi)', count: laporanBaruCount, activeClass: 'text-slate-900', barClass: 'bg-slate-900' },
@@ -356,7 +359,7 @@ function TRCDashboardContent({ currentUser }) {
           ))}
         </div>
 
-        {/* Konten */}
+        
         {loading && <LoadingState message="Memuat laporan lapangan..." />}
         {error && <ErrorState message={error} onRetry={refetch} />}
 
@@ -392,7 +395,7 @@ function TRCDashboardContent({ currentUser }) {
         )}
       </main>
 
-      {/* Modals */}
+      
       <ValidationModal
         isOpen={isValidationModalOpen}
         onClose={() => { setIsValidationModalOpen(false); setSelectedTask(null); }}

@@ -1,15 +1,13 @@
 import { X, RefreshCw, ShieldCheck, AlertTriangle, OctagonX } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export default function ModalUpdateData({ isOpen, onClose, selectedItem, onSave }) {
-  const [latestStock, setLatestStock] = useState(0);
+  const [stockDraft, setStockDraft] = useState({ itemId: null, value: 0 });
   const isFaskes = selectedItem?.tipe === 'faskes';
-
-  useEffect(() => {
-    if (selectedItem) {
-      setLatestStock(Number(selectedItem.current || 0));
-    }
-  }, [selectedItem]);
+  const selectedItemId = selectedItem?.id ?? null;
+  const latestStock = stockDraft.itemId === selectedItemId
+    ? stockDraft.value
+    : Number(selectedItem?.current || 0);
 
   const liveStatus = isFaskes
     ? latestStock <= 0 ? 'Penuh' : latestStock <= 5 ? 'Hampir Penuh' : 'Tersedia'
@@ -80,7 +78,7 @@ export default function ModalUpdateData({ isOpen, onClose, selectedItem, onSave 
               <input 
                 type="number" 
                 value={latestStock}
-                onChange={(e) => setLatestStock(Number(e.target.value))}
+                onChange={(e) => setStockDraft({ itemId: selectedItemId, value: Number(e.target.value) })}
                 className="w-full text-2xl font-bold px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 min="0"
               />

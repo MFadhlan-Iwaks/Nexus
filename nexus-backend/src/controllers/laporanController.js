@@ -1,13 +1,41 @@
 const pool = require('../config/db');
 
+function normalizeCoordinate(value, min, max) {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < min || number > max) return null;
+
+  return number;
+}
+
+function normalizeText(value) {
+  const text = String(value || '').trim();
+  return text || null;
+}
+
+function toBoolean(value) {
+  if (value === true || value === 'true' || value === 1 || value === '1') return true;
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  return null;
+}
+
 exports.buatLaporan = async (req, res) => {
   try {
     const { kategori_bencana, deskripsi_kejadian, longitude, latitude } = req.body;
     const id_user = req.user.id;
     const bukti_visual = req.file ? req.file.filename : null;
+    const kategori = normalizeText(kategori_bencana);
+    const deskripsi = normalizeText(deskripsi_kejadian);
+    const lon = normalizeCoordinate(longitude, -180, 180);
+    const lat = normalizeCoordinate(latitude, -90, 90);
 
-    if (!longitude || !latitude) {
-        return res.status(400).json({ message: "Koordinat lokasi wajib diisi!" });
+    if (!kategori || !deskripsi) {
+      return res.status(400).json({ message: "Kategori bencana dan deskripsi kejadian wajib diisi." });
+    }
+
+    if (lon === null || lat === null) {
+        return res.status(400).json({ message: "Koordinat lokasi wajib diisi dengan angka latitude/longitude yang valid." });
     }
 
     const query = `
@@ -17,7 +45,7 @@ exports.buatLaporan = async (req, res) => {
     `;
 
     const result = await pool.query(query, [
-        id_user, kategori_bencana, deskripsi_kejadian, longitude, latitude, bukti_visual
+        id_user, kategori, deskripsi, lon, lat, bukti_visual
     ]);
     
     res.status(201).json({ message: "Laporan berhasil dikirim!", data: result.rows[0] });
@@ -51,46 +79,54 @@ exports.getRiwayatLaporan = async (req, res) => {
   }
 };
 
-// Fungsi Update Status & Fase (Untuk TRC)
+
 exports.updateProgressLaporan = async (req, res) => {
   try {
     const { id_laporan } = req.params;
     const { status, fase_penanganan, pesan_situasi } = req.body;
     const id_user_trc = req.user.id;
     const foto_progress = req.file ? req.file.filename : null;
+    const nextStatus = normalizeText(status);
+    const nextFase = normalizeText(fase_penanganan);
 
-    // 1. Update Tabel Utama
+    if (!nextStatus || !nextFase) {
+      return res.status(400).json({ message: "Status dan fase penanganan wajib diisi." });
+    }
+
     let queryUpdate = `UPDATE laporan_bencana SET status = $1, fase_penanganan = $2`;
-    let params = [status, fase_penanganan, id_laporan];
+    let params = [nextStatus, nextFase, id_laporan];
 
     if (foto_progress) {
       queryUpdate += `, foto_progress = $4`;
       params.push(foto_progress);
     }
-    queryUpdate += ` WHERE id_laporan = $3`;
+    queryUpdate += ` WHERE id_laporan = $3 RETURNING id_laporan, status, fase_penanganan, foto_progress`;
 
-    await pool.query(queryUpdate, params);
+    const updated = await pool.query(queryUpdate, params);
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ message: "Laporan tidak ditemukan." });
+    }
 
-    // 2. Simpan ke Histori Sitrep jika ada pesan situasi
-    if (pesan_situasi) {
+    if (String(pesan_situasi || '').trim()) {
       await pool.query(
         `INSERT INTO sitrep_laporan (id_laporan, id_user_trc, pesan_situasi)
          SELECT l.id_laporan, $2, $3
          FROM laporan_bencana l
          WHERE l.id_laporan = $1`,
-        [id_laporan, id_user_trc, pesan_situasi]
+        [id_laporan, id_user_trc, String(pesan_situasi).trim()]
       );
     }
 
-    res.status(200).json({ message: "Update progress berhasil!" });
+    res.status(200).json({ message: "Update progress berhasil!", data: updated.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    res.status(500).json({ message: "Gagal memperbarui progres.", error: err.message });
   }
 };
 
 exports.getAllLaporan = async (req, res) => {
   try {
-    // Join user pelapor + validasi TRC terakhir + sitrep terakhir
+
     const query = `
       SELECT l.id_laporan, l.kategori_bencana, l.deskripsi_kejadian, l.status,
              l.waktu_laporan, l.bukti_visual, l.fase_penanganan, l.foto_progress,
@@ -128,34 +164,43 @@ exports.getAllLaporan = async (req, res) => {
     res.status(500).json({ error: "Gagal mengambil data laporan global." });
   }
 };
-// Fungsi Khusus untuk Validasi Laporan (Benar / Hoax)
+
 exports.validasiLaporan = async (req, res) => {
   try {
     const { id_laporan } = req.params;
     const { is_valid, keterangan, skala_darurat } = req.body; 
-    // is_valid: boolean (true jika benar, false jika hoax)
+
     const foto_validasi = req.file ? req.file.filename : null;
 
-    const isValid = is_valid === true || is_valid === 'true' || is_valid === 1 || is_valid === '1';
+    const isValid = toBoolean(is_valid);
     const id_user_trc = req.user.id;
+
+    if (isValid === null) {
+      return res.status(400).json({ message: "Status validasi wajib bernilai true atau false." });
+    }
 
     let status_baru = '';
     let fase_baru = '';
 
     if (isValid) {
       status_baru = 'Diproses';
-      fase_baru = 'Persiapan Menuju Lokasi'; // Otomatis masuk ke fase awal penanganan
+      fase_baru = 'Persiapan Menuju Lokasi'; 
     } else {
       status_baru = 'Ditolak';
       fase_baru = 'Laporan Palsu/Hoax';
     }
 
-    await pool.query(
+    const updated = await pool.query(
       `UPDATE laporan_bencana 
        SET status = $1, fase_penanganan = $2, keterangan_validasi = $3, foto_validasi = $4
-      WHERE id_laporan = $5`,
-      [status_baru, fase_baru, keterangan || null, foto_validasi, id_laporan]
+      WHERE id_laporan = $5
+      RETURNING id_laporan`,
+      [status_baru, fase_baru, normalizeText(keterangan), foto_validasi, id_laporan]
     );
+
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ message: "Laporan tidak ditemukan." });
+    }
 
     await pool.query(
       `INSERT INTO validasi_trc (id_laporan, id_user_trc, skala_darurat, waktu_validasi)

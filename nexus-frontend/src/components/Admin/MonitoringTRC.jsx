@@ -1,5 +1,5 @@
-// src/components/Admin/MonitoringTRC.jsx
-// Tabel monitoring petugas TRC — kompatibel dengan mockTrcUnits
+
+
 
 import { Activity, User, FileText, MapPin } from 'lucide-react';
 import { formatWaktuRelatif } from '@/lib/utils';
@@ -33,7 +33,7 @@ export default function MonitoringTRC({ trcMembers = [], reports = [] }) {
             </thead>
             <tbody className="divide-y divide-slate-200 text-sm">
               {trcMembers.map((member) => {
-                // Support field lama (currentReportId, name) dan baru (laporan_aktif_id, nama)
+
                 const reportId = member.laporan_aktif_id || member.currentReportId;
                 const namaAnggota = member.nama || member.name || '-';
                 const currentReport = reportId ? getCurrentReport(reportId) : null;

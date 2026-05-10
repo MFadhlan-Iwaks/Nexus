@@ -1,58 +1,54 @@
-// src/services/facilityService.js
-// ============================================================
-// Service: Fasilitas Kesehatan (Faskes)
-// TERPISAH dari logisticService karena status berbeda:
-//   Faskes: Tersedia | Hampir Penuh | Penuh
-//   Logistik: Aman | Menipis | Habis
-// ============================================================
 
-import { getFaskesState, patchFaskes, addFaskes } from '@/data/store';
-import { staticHealthFacilities } from '@/data/mockData';
+
+
 import { getToken, getLocalUser } from '@/services/authService';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-const simulateDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
 const toFaskesView = (item) => {
   const kapasitas = Number(item.kapasitas_tersedia ?? item.stok ?? 0);
   return {
     ...item,
-    nama: item.nama_fasilitas ?? item.nama,
+    id: item.id ?? item.id_faskes,
+    nama: item.nama_fasilitas ?? item.nama_instansi_medis ?? item.nama,
+    nama_fasilitas: item.nama_fasilitas ?? item.nama_instansi_medis ?? item.nama,
     stok: kapasitas,
     unit: item.satuan ?? item.unit ?? 'Bed',
-    institusi: item.lokasi ?? item.institusi,
+    institusi: item.nama_instansi ?? item.lokasi ?? item.institusi ?? item.id_instansi,
     terakhir_update: item.updated_at ?? item.terakhir_update,
     kapasitas_tersedia: kapasitas,
     satuan: item.satuan ?? item.unit ?? 'Bed',
-    lokasi: item.lokasi ?? item.institusi,
+    lokasi: item.nama_instansi ?? item.lokasi ?? item.institusi ?? item.id_instansi,
+    tipe: item.tipe ?? item.kategori,
+    latitude: item.latitude !== null && item.latitude !== undefined ? Number(item.latitude) : item.latitude,
+    longitude: item.longitude !== null && item.longitude !== undefined ? Number(item.longitude) : item.longitude,
   };
 };
 
-/**
- * Hitung status faskes berdasarkan kapasitas tersedia.
- * @param {number} kapasitas - jumlah bed/kapasitas tersedia
- * @returns {'Tersedia'|'Hampir Penuh'|'Penuh'}
- */
+
+
 export function getFaskesStatus(kapasitas) {
   if (kapasitas <= 0) return 'Penuh';
   if (kapasitas <= 5) return 'Hampir Penuh';
   return 'Tersedia';
 }
 
-/**
- * Ambil semua fasilitas kesehatan dari shared store.
- * 🟡 Mock — TODO: GET /api/faskes
- */
+
 export async function getFacilities() {
-  return staticHealthFacilities.map(toFaskesView);
+  const token = getToken();
+  if (!token) return [];
+
+  const res = await fetch(`${API_BASE}/faskes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Gagal mengambil faskes.');
+
+  return (data.data ?? []).map(toFaskesView);
 }
 
-/**
- * Tambah fasilitas baru.
- * 🟡 Mock — TODO: POST /api/faskes
- * @param {{ nama, kategori, stok, unit, institusi }} data
- */
+
+
 export async function createFacility(data) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -91,12 +87,8 @@ export async function createFacility(data) {
   };
 }
 
-/**
- * Update kapasitas fasilitas.
- * 🟡 Mock — TODO: PATCH /api/faskes/:id
- * @param {string} id
- * @param {{ stok: number }} data
- */
+
+
 export async function updateFacility(id, data) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -114,10 +106,8 @@ export async function updateFacility(id, data) {
   return { message: result.message, id };
 }
 
-/**
- * Hapus fasilitas kesehatan.
- * Backend: DELETE /api/faskes/:id
- */
+
+
 export async function deleteFacility(id) {
   const token = getToken();
   if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
@@ -130,10 +120,8 @@ export async function deleteFacility(id) {
   return { message: data.message, id };
 }
 
-/**
- * Ringkasan faskes per institusi (untuk Admin).
- * 🟡 Mock — TODO: GET /api/faskes/summary
- */
+
+
 export async function getFacilitySummary() {
   const token = getToken();
   if (!token) return [];

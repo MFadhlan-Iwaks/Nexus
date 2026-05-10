@@ -1,7 +1,6 @@
 "use client";
 
-// src/app/masyarakat/lapor/page.js
-// Form pelaporan darurat — submit melalui reportService (backend asli)
+
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,7 +18,7 @@ const KATEGORI_OPTIONS = [
 export default function LaporDaruratPage() {
   const router = useRouter();
 
-  const [locationState, setLocationState] = useState('idle'); // idle | loading | success
+  const [locationState, setLocationState] = useState('idle'); 
   const [coords, setCoords] = useState('');
   const [lat, setLat] = useState(null);
   const [lng, setLng] = useState(null);
@@ -31,7 +30,7 @@ export default function LaporDaruratPage() {
 
   const fileInputRef = useRef(null);
 
-  // ── GPS Detection ────────────────────────────────────────────
+
 
   const handleGetLocation = () => {
     setLocationState('loading');
@@ -57,7 +56,7 @@ export default function LaporDaruratPage() {
     );
   };
 
-  // ── File Upload ──────────────────────────────────────────────
+
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -70,7 +69,7 @@ export default function LaporDaruratPage() {
     setPreview(URL.createObjectURL(selected));
   };
 
-  // ── Submit ───────────────────────────────────────────────────
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,7 +93,7 @@ export default function LaporDaruratPage() {
       fd.append('longitude', lng);
       fd.append('bukti_visual', file);
 
-      // → reportService → POST /api/laporan/tambah (backend asli)
+
       await createReport(fd);
 
       router.push('/masyarakat/dashboard?laporan=terkirim');
@@ -107,7 +106,7 @@ export default function LaporDaruratPage() {
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800 pb-24">
-      {/* Header */}
+      
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center gap-4">
           <button
@@ -122,7 +121,7 @@ export default function LaporDaruratPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {/* Banner peringatan */}
+        
         <div className="bg-red-50 border border-red-200 p-4 rounded-xl mb-6 flex gap-3">
           <ShieldAlert size={20} className="text-red-600 shrink-0 mt-0.5" />
           <p className="text-xs sm:text-sm text-red-800 leading-relaxed">
@@ -131,7 +130,7 @@ export default function LaporDaruratPage() {
           </p>
         </div>
 
-        {/* Error message */}
+        
         {errorMsg && (
           <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-sm text-red-700">
             <AlertTriangle size={18} className="shrink-0 mt-0.5" />
@@ -141,7 +140,7 @@ export default function LaporDaruratPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
 
-          {/* 1. Lokasi GPS */}
+          
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
             <label className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
               <MapPin size={18} className="text-red-600" />
@@ -186,7 +185,7 @@ export default function LaporDaruratPage() {
             )}
           </div>
 
-          {/* 2. Upload Foto */}
+          
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
               <Camera size={18} className="text-slate-500" />
@@ -233,7 +232,7 @@ export default function LaporDaruratPage() {
             </div>
           </div>
 
-          {/* 3. Kategori & Deskripsi */}
+          
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-slate-800 mb-1">
@@ -267,7 +266,7 @@ export default function LaporDaruratPage() {
             </div>
           </div>
 
-          {/* Submit */}
+          
           <div className="pt-2">
             <button
               type="submit"
