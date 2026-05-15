@@ -2,7 +2,7 @@
 
 
 
-import { useMemo, useState, useEffect, useSyncExternalStore } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { ShieldAlert, Megaphone, Activity, LogOut, LayoutDashboard, Users, Boxes, Send, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -162,40 +162,33 @@ function getDistanceMeters(from, to) {
   return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function subscribeUserSession(onStoreChange) {
-  if (typeof window === 'undefined') return () => {};
-  window.addEventListener('storage', onStoreChange);
-  return () => window.removeEventListener('storage', onStoreChange);
-}
-
-function getUserSessionSnapshot() {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('user');
-}
-
-function getServerUserSessionSnapshot() {
-  return null;
-}
-
 export default function AdminExecutiveDashboard() {
   const router = useRouter();
-  const userSession = useSyncExternalStore(
-    subscribeUserSession,
-    getUserSessionSnapshot,
-    getServerUserSessionSnapshot
-  );
-  const user = useMemo(() => {
-    if (!userSession) return null;
-    try {
-      return JSON.parse(userSession);
-    } catch {
-      return null;
-    }
-  }, [userSession]);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [user, setUser] = useState(null);
   const hasUser = Boolean(user);
   const role = String(user?.role || '').toLowerCase();
 
   useEffect(() => {
+    const readSession = () => {
+      try {
+        const raw = localStorage.getItem('user');
+        setUser(raw ? JSON.parse(raw) : null);
+      } catch {
+        setUser(null);
+      } finally {
+        setSessionChecked(true);
+      }
+    };
+
+    readSession();
+    window.addEventListener('storage', readSession);
+    return () => window.removeEventListener('storage', readSession);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionChecked) return;
+
     if (!hasUser) {
       document.cookie = 'role=; Max-Age=0; path=/; samesite=lax';
       document.cookie = 'token=; Max-Age=0; path=/; samesite=lax';
@@ -212,9 +205,9 @@ export default function AdminExecutiveDashboard() {
             : '/auth';
       router.replace(target);
     }
-  }, [hasUser, role, router]);
+  }, [hasUser, role, router, sessionChecked]);
 
-  if (!hasUser || role !== 'admin') {
+  if (!sessionChecked || !hasUser || role !== 'admin') {
     return <LoadingState message="Mengalihkan..." />;
   }
 
@@ -1266,7 +1259,7 @@ function AdminExecutiveDashboardContent({ currentUser }) {
 
           
           {activeTab === 'sumberdaya' && (
-            <div className="w-full h-full">
+            <div className="w-full h-full min-h-0 overflow-y-auto pr-1">
               {(errorLogisticSummary || errorFaskesSummary) ? (
                 <ErrorState
                   message={errorLogisticSummary || errorFaskesSummary}
