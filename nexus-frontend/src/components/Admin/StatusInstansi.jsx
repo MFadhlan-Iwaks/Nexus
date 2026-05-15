@@ -76,7 +76,7 @@ export default function StatusInstansi({
   const hasFaskesDetails = faskesItems.length > 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300 flex flex-col h-full p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300 flex flex-col min-h-full p-6">
       <div className="mb-6">
         <h2 className="font-bold text-slate-800 text-lg">Monitoring Sumber Daya Instansi</h2>
         <p className="text-xs text-slate-500">

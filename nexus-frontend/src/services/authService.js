@@ -70,11 +70,12 @@ export function getToken() {
 export function saveSession(token, user) {
   localStorage.setItem('token', token);
   localStorage.setItem('user', JSON.stringify(user));
+  const maxAge = 60 * 60 * 24;
   if (token) {
-    document.cookie = `token=${encodeURIComponent(String(token))}; path=/; samesite=lax`;
+    document.cookie = `token=${encodeURIComponent(String(token))}; path=/; max-age=${maxAge}; samesite=lax`;
   }
   if (user?.role) {
-    document.cookie = `role=${encodeURIComponent(String(user.role))}; path=/; samesite=lax`;
+    document.cookie = `role=${encodeURIComponent(String(user.role))}; path=/; max-age=${maxAge}; samesite=lax`;
   }
 }
 

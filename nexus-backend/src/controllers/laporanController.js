@@ -60,10 +60,32 @@ exports.getRiwayatLaporan = async (req, res) => {
   try {
     const id_user = req.user.id;
     const query = `
-      SELECT id_laporan, kategori_bencana, deskripsi_kejadian, status, waktu_laporan, bukti_visual
-      FROM laporan_bencana 
-      WHERE id_user = $1
-      ORDER BY waktu_laporan DESC;
+      SELECT l.id_laporan, l.kategori_bencana, l.deskripsi_kejadian, l.status,
+             l.waktu_laporan, l.bukti_visual, l.fase_penanganan,
+             l.keterangan_validasi, l.foto_validasi, l.foto_progress,
+             ST_Y(l.koordinat::geometry) AS latitude,
+             ST_X(l.koordinat::geometry) AS longitude,
+             v.skala_darurat, v.waktu_validasi,
+             ut.nama_lengkap AS nama_trc,
+             s.pesan_situasi, s.waktu_update
+      FROM laporan_bencana l
+      LEFT JOIN LATERAL (
+        SELECT id_user_trc, skala_darurat, waktu_validasi
+        FROM validasi_trc
+        WHERE id_laporan = l.id_laporan
+        ORDER BY waktu_validasi DESC
+        LIMIT 1
+      ) v ON true
+      LEFT JOIN users ut ON ut.id_user = v.id_user_trc
+      LEFT JOIN LATERAL (
+        SELECT pesan_situasi, waktu_update
+        FROM sitrep_laporan
+        WHERE id_laporan = l.id_laporan
+        ORDER BY waktu_update DESC
+        LIMIT 1
+      ) s ON true
+      WHERE l.id_user = $1
+      ORDER BY l.waktu_laporan DESC;
     `;
 
     const result = await pool.query(query, [id_user]);
